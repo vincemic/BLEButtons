@@ -1,128 +1,87 @@
-
-
-//This example code is in the Public Domain (or CC0 licensed, at your option.)
-//By Evandro Copercini - 2018
-//
-//This example creates a bridge between Serial and Classical Bluetooth (SPP)
-//and also demonstrate that SerialBT have the same functionalities of a normal Serial
-
-#include "BluetoothSerial.h"
 #include <ArduinoJson.h>
-
+#include <BluetoothSerial.h>
+#include <Adafruit_seesaw.h>
+#include <ArduinoLog.h>
+#include <TaskScheduler.h>
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
 
-#include "Adafruit_seesaw.h"
+#include "Devices.h"
 #include "LoopbackStream.h"
 #include "LEDCommand.h"
+#include "Blinker.h"
 
-
-#define DEFAULT_I2C_ADDR 0x3A
 #define BUFFER_SIZE 500
 #define RETURN '\r'
 #define LINEFEED '\n'
 
 uint8_t inputCharacter;
 uint8_t markerCount = 0;
-uint16_t pid;
-uint8_t year, mon, day;
+const char btDeviceName[] = "BLEButtons";
 
-struct button {
-  uint8_t index = 0;
-  uint8_t pin = 0 ;
-  uint8_t led = 0 ;
-  uint8_t debounce = 0;
-  button(uint8_t index, uint8_t pin, uint8_t led) {
-    this->index = index;
-    this->pin = pin;
-    this->led = led;
-  }
-};
-button buttons[] = {{1, 18, 12}, {2, 19, 13}, {3, 20, 0}, {4, 2, 1}};
+// Scheduler
+Scheduler scheduler;
+Task blinkTask;
+Task devicesTask;
+
+// Blinker
+Blinker blinker;
+
 LoopbackStream protocolStream(BUFFER_SIZE);
 DynamicJsonDocument jsonDocument(BUFFER_SIZE);
-Adafruit_seesaw ss;
-BluetoothSerial SerialBT;
-Command commands[] = { LEDCommand() };
+Devices devices;
+BluetoothSerial serialBT;
+Command commands[] = {LEDCommand(&devices)};
 
-void setup() {
+void setup()
+{
+
   Serial.begin(115200);
-  SerialBT.begin(F("BLEButtons")); //Bluetooth device name
-  Serial.println(F("The device started, now you can pair it with bluetooth!"));
+  Log.begin(LOG_LEVEL_VERBOSE, &Serial);
 
-  if (!ss.begin(DEFAULT_I2C_ADDR)) {
-    Serial.println(F("seesaw not found!"));
-    while (1) delay(1000);
-  }
+  serialBT.begin(btDeviceName);
+  Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), btDeviceName);
 
-  ss.getProdDatecode(&pid, &year, &mon, &day);
-  Serial.print(F("seesaw found PID: "));
-  Serial.print(pid);
-  Serial.print(F(" datecode: "));
-  Serial.print(2000 + year); Serial.print("/");
-  Serial.print(mon); Serial.print("/");
-  Serial.println(day);
+  devices.begin();
 
-  if (pid != 5296) {
-    Serial.println(F("Wrong seesaw PID"));
-    while (1) delay(10);
-  }
+  // Blink Task
+  blinkTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &blinkTick);
+  scheduler.addTask(blinkTask);
+  blinkTask.enable();
 
-  Serial.println(F("seesaw started OK!"));
-
-  for ( button btn : buttons) {
-    ss.pinMode(btn.pin, INPUT_PULLUP);
-    ss.analogWrite(btn.led, 0);
-  }
+  // Devices Task
+  devicesTask.set(TASK_MILLISECOND * 40, TASK_FOREVER, &devicesTick);
+  scheduler.addTask(devicesTask);
+  devicesTask.enable();
 }
 
-void loop() {
-  while (SerialBT.available()) {
-    process(SerialBT.read());
+void loop()
+{
+  while (serialBT.available())
+  {
+    process(serialBT.read());
   }
 
-  bool switchOn = false;
-
-  for ( button &btn : buttons) {
-
-    switchOn = !ss.digitalRead(btn.pin);
-
-    if (switchOn) {
-      ss.analogWrite(btn.led, 255);
-      if (btn.debounce < 1) {
-        log(F("Button pressed"));
-        btWriteButtonMessage(btn.index);
-        btn.debounce = 1;
-      }
-    } else if (!switchOn) {
-      ss.analogWrite(btn.led, 0);
-      if (btn.debounce > 0)
-        btn.debounce--;
-    }
-
-  }
-
+	scheduler.execute();
 }
 
-void btWriteMessage(String* message) {
-  SerialBT.write(RETURN);
-  SerialBT.write(LINEFEED);
-  SerialBT.write((const uint8_t*)message->c_str(), message->length());
-  SerialBT.write(RETURN);
-  SerialBT.write(LINEFEED);
+void btWriteMessage(String *message)
+{
+  serialBT.write((const uint8_t *)message->c_str(), message->length());
+  serialBT.write('\n');
 }
 
 void btWriteButtonMessage(int number)
 {
-  SerialBT.write('b');
-  SerialBT.write('0' + number);
-  SerialBT.write(RETURN);
-  SerialBT.write(LINEFEED);
+  serialBT.write('b');
+  serialBT.write('0' + number);
+  serialBT.write('\n');
 }
 
-void process(uint8_t character) {
+void process(uint8_t character)
+{
 
   if (character < 0)
     return;
@@ -134,70 +93,61 @@ void process(uint8_t character) {
   else
     markerCount = 0;
 
-  if (markerCount >= 2) {
+  if (markerCount >= 2)
+  {
     processDocument();
     markerCount = 0;
   }
-
 }
 
-void processDocument() {
+void processDocument()
+{
   DeserializationError error = deserializeJson(jsonDocument, protocolStream);
   protocolStream.clear();
 
-  if (error) {
-    logError(F("deserializeJson() failed: "));
-    logError(error.f_str());
-
+  if (error)
+  {
+    Log.errorln(F("deserializeJson() failed: %s"), error.f_str());
     return;
-  } else {
+  }
+  else
+  {
 
     logJsonDocument();
-    log(F("message received"));
-    
+    Log.traceln(F("message received"));
+
     JsonVariant commandJson = jsonDocument["command"];
 
-    if (commandJson.isNull()) {
-      logError(F("command not found"));
-      return;
-    } else
+    if (commandJson.isNull())
     {
-      log(F("command found"));
-      const char * commandName = commandJson.as<const char*>();
+      Log.traceln(F("command not found"));
+      return;
+    }
+    else
+    {
+      const char *commandName = commandJson.as<const char *>();
+      Log.traceln(F("command found: %s"), commandName);
 
-      for(Command& command: commands) {
-          command.Execute(commandName, commandJson);
+      for (Command &command : commands)
+      {
+        command.Execute(commandName, commandJson);
       }
-      
     }
   }
 }
 
-void logError(const __FlashStringHelper* message ) {
-  Serial.print(LINEFEED);
-  Serial.print(F("Error: "));
-  Serial.print(message);
-  Serial.print(LINEFEED);
-}
-
-void logError(char* message ) {
-  Serial.print(F("\nError: "));
-  Serial.print(message);
-  Serial.print(LINEFEED);
-}
-
-void log(const __FlashStringHelper* message) {
-  Serial.print(message);
-  Serial.print(LINEFEED);
-}
-
-void log(char* message) {
-  Serial.print(message);
-  Serial.print(LINEFEED);
-}
-
-void logJsonDocument() {
+void logJsonDocument()
+{
   serializeJson(jsonDocument, Serial);
-  Serial.print(LINEFEED);
+  Log.trace(CR);
 }
 
+void blinkTick()
+{
+	blinker.tick();
+}
+
+void devicesTick()
+{
+	devices.tick();
+}
