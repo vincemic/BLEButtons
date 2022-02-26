@@ -5,8 +5,8 @@ struct button
 {
     uint8_t index = 0;
     uint8_t pin = 0;
-    uint8_t debounce = 0;
-    bool on = false;
+    bool debounce = true;
+
     button(uint8_t index, uint8_t pin)
     {
         this->index = index;
@@ -27,8 +27,9 @@ struct led
 };
 led leds[] = {{0, 12}, {1, 13}, {2, 0}, {3, 1}};
 
-Devices::Devices()
+Devices::Devices(ButtonChangeCallback buttonChangeCallback)
 {
+    this->buttonChangeCallback = buttonChangeCallback;
 }
 
 void Devices::begin()
@@ -48,19 +49,25 @@ void Devices::tick()
 
         if (switchOn)
         {
-            seesaw.analogWrite(leds[btn.index].pin, 255);
-            if (btn.debounce < 1)
+            if (!btn.debounce)
             {
-                Log.traceln(F("Button %d pressed "), btn.index +1);
-                btn.debounce = 1;
-                btn.on = true;
+                Log.traceln(F("Button %d on"), btn.index + 1);
+                btn.debounce = true;
+
+                if (buttonChangeCallback != NULL)
+                    buttonChangeCallback(btn.index + 1, true);
             }
         }
         else if (!switchOn)
         {
-            seesaw.analogWrite(leds[btn.index].pin, 0);
-            if (btn.debounce > 0)
-                btn.debounce--;
+            if (btn.debounce)
+            {
+                Log.traceln(F("Button %d off"), btn.index + 1);
+                btn.debounce = false;
+
+                if (buttonChangeCallback != NULL)
+                    buttonChangeCallback(btn.index + 1, false);
+            }
         }
     }
 }
@@ -95,4 +102,17 @@ bool Devices::startSeesaw()
     }
 
     return true;
+}
+
+void Devices::turnOnLED(uint8_t number)
+{
+    uint8_t index = number - 1;
+    if (index >= 0 && number < sizeof(leds))
+        seesaw.analogWrite(leds[index].pin, 127);
+}
+void Devices::turnOffLED(uint8_t number)
+{
+    uint8_t index = number - 1;
+    if (index >= 0 && number < sizeof(leds))
+        seesaw.analogWrite(leds[index].pin, 0);
 }
