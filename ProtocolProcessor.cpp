@@ -2,8 +2,8 @@
 #include <ArduinoLog.h>
 
 ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback) 
-: jsonDocument(50),
-protocolStream(50)
+: jsonDocument(500),
+protocolStream(500)
 {
     this->ledCallback = ledCallback;
 }
@@ -57,20 +57,19 @@ void ProtocolProcessor::processDocument()
         logJsonDocument();
         Log.traceln(F("message received"));
 
-        JsonVariant commandJson = jsonDocument["command"];
+        const char* commandName = jsonDocument["command"];
 
-        if (commandJson.isNull())
+        if (commandName == NULL)
         {
             Log.traceln(F("command not found"));
             return;
         }
         else
         {
-            const char *commandName = commandJson.as<const char *>();
             Log.traceln(F("command found: %s"), commandName);
 
             if(strcmp(commandName,"led")==0) {
-               ExecuteLedCommand(commandJson);
+               ExecuteLedCommand();
             }
         }
     }
@@ -82,7 +81,40 @@ void ProtocolProcessor::logJsonDocument()
     Log.trace(CR);
 }
 
-void ProtocolProcessor::ExecuteLedCommand(JsonVariant commandJson) {
+void ProtocolProcessor::ExecuteLedCommand() {
+
+    uint8_t turnOn = jsonDocument["turnOn"];
+    uint8_t turnOff = jsonDocument["turnOff"];
+    uint8_t number = 0;
+    bool on = false;
+
+    if(turnOn == 0 && turnOff == 0 ){
+        Log.errorln(F("Incorrect protocol"));
+        return;
+    }
+
+    if(turnOn != 0) {
+         number = turnOn;
+         on = true;
+    }
+    else {
+         number = turnOff;
+         on = false;
+    }
+    
     if(ledCallback != NULL)
-        ledCallback(1,true);
+        ledCallback(number,on);
+}
+
+void ProtocolProcessor::sendButtonPress(uint8_t buttonNumber) {
+    char buffer[32];
+    snprintf(buffer, 32, "{ buttonPress: %d}\r\r", buttonNumber);
+
+    for(uint8_t i = 0; i < 32; i++) {
+
+        if(buffer[i] == 0)
+            break;
+
+        serialBT->write(buffer[i]);
+    }
 }

@@ -22,11 +22,12 @@ private:
     void processDocument();
     void logJsonDocument();
 
-    void ExecuteLedCommand(JsonVariant commandJson);
+    void ExecuteLedCommand();
 
 public:
     ProtocolProcessor(ProtocolLedCallback ledCallback);
     void begin(BluetoothSerial *serialBT);
     void tick();
+    void sendButtonPress(uint8_t buttonNumber);
     
 };

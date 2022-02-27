@@ -1,4 +1,3 @@
-
 #include <BluetoothSerial.h>
 #include <Adafruit_seesaw.h>
 #include <ArduinoLog.h>
@@ -11,8 +10,8 @@
 #include "Devices.h"
 #include "Blinker.h"
 #include "ProtocolProcessor.h"
-
-
+#include "FileSystem.h"
+#include "Settings.h"
 
 const char btDeviceName[] = "BLEButtons";
 
@@ -22,23 +21,23 @@ Task blinkTask;
 Task devicesTask;
 Task protocolTask;
 
-
 Blinker blinker;
 Devices devices(&deviceButtonCallback);
 ProtocolProcessor protocolProcessor(&protocolLedCallback);
 
-
 BluetoothSerial serialBT;
-
 
 void setup()
 {
 
   Serial.begin(115200);
   Log.begin(LOG_LEVEL_VERBOSE, &Serial);
+  Files.begin();
+  Setting.being();
   serialBT.begin(btDeviceName);
   protocolProcessor.begin(&serialBT);
-  
+
+
   Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), btDeviceName);
 
   devices.begin();
@@ -61,7 +60,6 @@ void setup()
 
 void loop()
 {
-  
 
   scheduler.execute();
 }
@@ -79,7 +77,6 @@ void btWriteButtonMessage(int number)
   serialBT.write('\n');
 }
 
-
 void blinkTick()
 {
   blinker.tick();
@@ -90,22 +87,28 @@ void devicesTick()
   devices.tick();
 }
 
-void protocolTick() {
+void protocolTick()
+{
   protocolProcessor.tick();
 }
 
 void deviceButtonCallback(uint8_t buttonNumber, bool isOn)
 {
-  Log.traceln(F("Got button call back"));
+  Log.traceln(F("Got button callback for button %d"), buttonNumber);
   if (isOn)
+  {
+    protocolProcessor.sendButtonPress(buttonNumber);
     devices.turnOnLED(buttonNumber);
+  }
   else
+  {
     devices.turnOffLED(buttonNumber);
+  }
 }
 
 void protocolLedCallback(uint8_t ledNumber, bool turnOn)
 {
-   Log.traceln(F("Got protocol call back"));
+  Log.traceln(F("Got protocol callback for led %d"), ledNumber);
   if (turnOn)
     devices.turnOnLED(ledNumber);
   else

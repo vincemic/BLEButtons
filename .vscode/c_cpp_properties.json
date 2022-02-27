@@ -205,6 +205,8 @@
                 "C:\\Users\\vjm\\Documents\\Arduino\\libraries\\ArduinoLog",
                 "C:\\Users\\vjm\\Documents\\Arduino\\libraries\\TaskScheduler\\src",
                 "C:\\Users\\vjm\\Documents\\Arduino\\libraries\\ArduinoJson\\src",
+                "C:\\Users\\vjm\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\2.0.2\\libraries\\FS\\src",
+                "C:\\Users\\vjm\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\2.0.2\\libraries\\LittleFS\\src",
                 "C:\\Users\\vjm\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\2.0.2\\libraries\\SPI\\src",
                 "c:\\users\\vjm\\appdata\\local\\arduino15\\packages\\esp32\\tools\\xtensa-esp32-elf-gcc\\gcc8_4_0-esp-2021r2\\xtensa-esp32-elf\\include\\c++\\8.4.0",
                 "c:\\users\\vjm\\appdata\\local\\arduino15\\packages\\esp32\\tools\\xtensa-esp32-elf-gcc\\gcc8_4_0-esp-2021r2\\xtensa-esp32-elf\\include\\c++\\8.4.0\\xtensa-esp32-elf",
