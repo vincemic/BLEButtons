@@ -1,14 +1,15 @@
 #include "ProtocolProcessor.h"
 #include <ArduinoLog.h>
 #include "Settings.h"
-#define COMMAND_COUNT 4
+#define COMMAND_COUNT 5
 
-ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback)
+ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback)
     : jsonDocument(250),
       protocolStream(250)
 {
 
     this->ledCallback = ledCallback;
+    this->reportCallback = reportCallback;
     this->commands = new Command *[COMMAND_COUNT]
     {
         new Command("led", [this]()
@@ -18,7 +19,9 @@ ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback)
         new Command("wifipassword", [this]()
                   { ExecuteSetWiFiPasswordCommand(); }),
         new Command("clearsettings", [this]()
-                  { ExecuteClearSettingsCommand(); })
+                  { ExecuteClearSettingsCommand(); }),
+        new Command("report", [this]()
+                  { ExecuteReportCommand(); })
     };
 }
 void ProtocolProcessor::begin(BluetoothSerial *serialBT)
@@ -62,7 +65,6 @@ void ProtocolProcessor::processDocument()
     if (error)
     {
         Log.errorln(F("deserializeJson() failed: %s"), error.f_str());
-        return;
     }
     else
     {
@@ -75,7 +77,6 @@ void ProtocolProcessor::processDocument()
         if (commandName == NULL)
         {
             Log.traceln(F("command not found"));
-            return;
         }
         else
         {
@@ -91,6 +92,8 @@ void ProtocolProcessor::processDocument()
             }
         }
     }
+
+
 }
 
 void ProtocolProcessor::logJsonDocument()
@@ -99,6 +102,8 @@ void ProtocolProcessor::logJsonDocument()
     serializeJson(jsonDocument, json);
     Log.traceln("%s",json.c_str());
 }
+
+ /////////////////////////////
 
 void ProtocolProcessor::sendButtonPress(uint8_t buttonNumber)
 {
@@ -112,6 +117,25 @@ void ProtocolProcessor::sendButtonPress(uint8_t buttonNumber)
             break;
 
         serialBT->write(buffer[i]);
+    }
+}
+
+void ProtocolProcessor::sendReport(JsonDocument &jsonReportDocument)
+{
+    String json;
+    serializeJson(jsonReportDocument, json);
+    json.concat("\r\r");
+
+    const char *jsonBuffer = json.c_str();
+    Log.traceln("Sending requested report: %s", json.c_str());
+    uint16_t length = json.length();
+
+    uint16_t index = 0;
+
+    while (index < length)
+    {
+        serialBT->write(jsonBuffer[index]);
+        index++;
     }
 }
 
@@ -161,4 +185,9 @@ void ProtocolProcessor::ExecuteSetWiFiPasswordCommand()
 
 void ProtocolProcessor::ExecuteClearSettingsCommand() {
     Settings.clear();
+}
+
+void ProtocolProcessor::ExecuteReportCommand() {
+    if(reportCallback != NULL)
+        reportCallback();
 }

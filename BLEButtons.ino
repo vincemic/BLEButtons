@@ -25,7 +25,7 @@ Task wifiTask;
 
 Blinker blinker;
 Devices devices(&deviceButtonCallback);
-ProtocolProcessor protocolProcessor(&protocolLedCallback);
+ProtocolProcessor protocolProcessor(&protocolLedCallback,&protocolReportCallback);
 
 BluetoothSerial serialBT;
 
@@ -65,7 +65,7 @@ void setup()
   protocolTask.enable();
 
   // WiFi Task
-  wifiTask.set(TASK_MILLISECOND * 15000, TASK_FOREVER, &wifiTick);
+  wifiTask.set(TASK_MILLISECOND * 60000 * 5, TASK_FOREVER, &wifiTick);
   scheduler.addTask(wifiTask);
   wifiTask.enable();
 }
@@ -130,4 +130,16 @@ void protocolLedCallback(uint8_t ledNumber, bool turnOn)
     devices.turnOnLED(ledNumber);
   else
     devices.turnOffLED(ledNumber);
+}
+
+void protocolReportCallback()
+{
+  Log.traceln(F("Got protocol callback for reports"));
+  DynamicJsonDocument jsonDocument(250);
+
+  Settings.report(jsonDocument);
+
+  protocolProcessor.sendReport(jsonDocument);
+
+
 }

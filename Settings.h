@@ -14,9 +14,10 @@ public:
 
     void writeWiFiSID(const char *name);
     void writeWiFiPassword(const char *password);
-    void readWiFiSID(String *wifiSID);
-    void readWiFiPassword(String *password);
+    void readWiFiSID(String &wifiSID);
+    void readWiFiPassword(String &password);
     void clear();
+    void report(JsonDocument &jsonDocument);
 };
 
 extern SettingsClass Settings;

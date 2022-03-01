@@ -13,8 +13,8 @@ bool WifiHandlerClass::connect()
     String password;
     bool result = false;
 
-    Settings.readWiFiSID(&sid);
-    Settings.readWiFiPassword(&password);
+    Settings.readWiFiSID(sid);
+    Settings.readWiFiPassword(password);
 
     disconnect();
     
