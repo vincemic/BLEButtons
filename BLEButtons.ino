@@ -3,7 +3,6 @@
 #include <ArduinoLog.h>
 #include <TaskScheduler.h>
 
-
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
@@ -25,7 +24,7 @@ Task wifiTask;
 
 Blinker blinker;
 Devices devices(&deviceButtonCallback);
-ProtocolProcessor protocolProcessor(&protocolLedCallback,&protocolReportCallback);
+ProtocolProcessor protocolProcessor(&protocolLedCallback, &protocolReportCallback);
 
 BluetoothSerial serialBT;
 
@@ -43,12 +42,10 @@ void setup()
 
   Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), btDeviceName);
 
-
   devices.begin();
 
   WifiHandler.connect();
 
- 
   // Blink Task
   blinkTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &blinkTick);
   scheduler.addTask(blinkTask);
@@ -114,12 +111,15 @@ void deviceButtonCallback(uint8_t buttonNumber, bool isOn)
   Log.traceln(F("Got button callback for button %d"), buttonNumber);
   if (isOn)
   {
-    protocolProcessor.sendButtonPress(buttonNumber);
+    protocolProcessor.sendStatus("button", "on", buttonNumber);
     devices.turnOnLED(buttonNumber);
+    protocolProcessor.sendStatus("led", "on", buttonNumber);
   }
   else
   {
+    protocolProcessor.sendStatus("button", "off", buttonNumber);
     devices.turnOffLED(buttonNumber);
+    protocolProcessor.sendStatus("led", "off", buttonNumber);
   }
 }
 
@@ -127,9 +127,15 @@ void protocolLedCallback(uint8_t ledNumber, bool turnOn)
 {
   Log.traceln(F("Got protocol callback for led %d"), ledNumber);
   if (turnOn)
+  {
     devices.turnOnLED(ledNumber);
+    protocolProcessor.sendStatus("led", "on", ledNumber);
+  }
   else
+  {
     devices.turnOffLED(ledNumber);
+    protocolProcessor.sendStatus("led", "on", ledNumber);
+  }
 }
 
 void protocolReportCallback()
@@ -138,8 +144,7 @@ void protocolReportCallback()
   DynamicJsonDocument jsonDocument(250);
 
   Settings.report(jsonDocument);
+  WifiHandler.report(jsonDocument);
 
   protocolProcessor.sendReport(jsonDocument);
-
-
 }

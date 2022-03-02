@@ -41,7 +41,7 @@ public:
     void begin(BluetoothSerial *serialBT);
     void tick();
 
-    void sendButtonPress(uint8_t buttonNumber);
+    void sendStatus(const char * type, const char *status, uint8_t number );
     void sendReport(JsonDocument &jsonReportDocument);
 
     void ExecuteLedCommand();

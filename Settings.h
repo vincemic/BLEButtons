@@ -5,8 +5,8 @@ class SettingsClass
 {
 
 private:
-    void save(JsonDocument *jsonDocument);
-    bool load(JsonDocument *jsonDocument);
+    void save(DynamicJsonDocument &jsonDocument);
+    bool load(DynamicJsonDocument &jsonDocument);
 
 public:
     SettingsClass();

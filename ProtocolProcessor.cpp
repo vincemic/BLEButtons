@@ -105,17 +105,23 @@ void ProtocolProcessor::logJsonDocument()
 
  /////////////////////////////
 
-void ProtocolProcessor::sendButtonPress(uint8_t buttonNumber)
+
+void ProtocolProcessor::sendStatus(const char * type, const char *status, uint8_t number )
 {
-    char buffer[32];
-    snprintf(buffer, 32, "{ buttonPress: %d}\r\r", buttonNumber);
+    DynamicJsonDocument jsonDocument(100);
+    String json;
 
-    for (uint8_t i = 0; i < 32; i++)
+    jsonDocument["type"] = type;
+    jsonDocument["status"] = status;
+    jsonDocument["number"] = number;
+
+    serializeJson(jsonDocument, json);
+
+    size_t count = json.length();
+    const char *buffer = json.c_str();
+
+    for (size_t i = 0; i < count; i++)
     {
-
-        if (buffer[i] == 0)
-            break;
-
         serialBT->write(buffer[i]);
     }
 }

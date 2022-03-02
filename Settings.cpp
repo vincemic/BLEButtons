@@ -25,22 +25,18 @@ void SettingsClass::clear()
     FileSystem.deleteFile(SETTINGSPATH);
 }
 
-void SettingsClass::save(JsonDocument *jsonDocument)
+void SettingsClass::save(DynamicJsonDocument &jsonDocument)
 {
     String json;
-    serializeJson((*jsonDocument), json);
+    serializeJson(jsonDocument, json);
     Log.traceln(F("Saving settings file\r%s"), json.c_str());
     FileSystem.writeFile(SETTINGSPATH, json.c_str());
 }
 
-bool SettingsClass::load(JsonDocument *jsonDocument)
+bool SettingsClass::load(DynamicJsonDocument &jsonDocument)
 {
     char buffer[MAXSETTINGSIZE];
-    memset(buffer, '\0', MAXSETTINGSIZE);
-
     size_t fileSize = FileSystem.readFile(SETTINGSPATH, buffer, MAXSETTINGSIZE - 1);
-
-    jsonDocument->clear();
 
     if (fileSize <= 0)
     {
@@ -48,17 +44,16 @@ bool SettingsClass::load(JsonDocument *jsonDocument)
         return false;
     }
 
-    DeserializationError error = deserializeJson((*jsonDocument), buffer, fileSize);
+    DeserializationError error = deserializeJson(jsonDocument, buffer, fileSize);
 
     if (error)
     {
         Log.errorln(F("Settings deserializeJson() failed: %s"), error.f_str());
-        jsonDocument->clear();
         return false;
     }
 
     String json;
-    serializeJson((*jsonDocument), json);
+    serializeJson(jsonDocument, json);
     Log.traceln(F("Settings file loaded: %s"), json.c_str());
     return true;
 }
@@ -66,37 +61,37 @@ bool SettingsClass::load(JsonDocument *jsonDocument)
 void SettingsClass::writeWiFiSID(const char *name)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(&jsonDocument);
+    load(jsonDocument);
     jsonDocument[WIFISID] = name;
-    save(&jsonDocument);
+    save(jsonDocument);
 }
 
 void SettingsClass::writeWiFiPassword(const char *password)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(&jsonDocument);
+    load(jsonDocument);
     jsonDocument[WIFIPASSWORD] = password;
-    save(&jsonDocument);
+    save(jsonDocument);
 }
 
 void SettingsClass::readWiFiSID(String &wifiSID)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(&jsonDocument);
+    load(jsonDocument);
     wifiSID.concat(jsonDocument[WIFISID].as<const char *>());
 }
 
 void SettingsClass::readWiFiPassword(String &password)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(&jsonDocument);
+    load(jsonDocument);
     password.concat(jsonDocument[WIFIPASSWORD].as<const char *>());
 }
 
 void SettingsClass::report(JsonDocument &jsonDocument)
 {
     DynamicJsonDocument settingsJsonDocument(MAXSETTINGSIZE);
-    load(&settingsJsonDocument);
+    load(settingsJsonDocument);
 
     JsonMerge(jsonDocument, settingsJsonDocument,"settings");
 }

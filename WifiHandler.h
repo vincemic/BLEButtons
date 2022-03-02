@@ -1,5 +1,5 @@
 #pragma once
-
+#include <ArduinoJson.h>
 class WifiHandlerClass
 {
 
@@ -8,6 +8,7 @@ public:
     bool connect();
     void disconnect();
     void tick();
+    void report(JsonDocument &jsonDocument);
 };
 
 extern WifiHandlerClass WifiHandler;
