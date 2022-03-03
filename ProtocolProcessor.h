@@ -41,8 +41,8 @@ public:
     void begin(BluetoothSerial *serialBT);
     void tick();
 
-    void sendStatus(const char * type, const char *status, uint8_t number );
-    void sendReport(JsonDocument &jsonReportDocument);
+    void sendStatus(const char * type, const char *status, uint8_t number , bool isAck = false);
+    void send(JsonDocument &jsonDocument);
 
     void ExecuteLedCommand();
     void ExecuteSetWiFiSIDCommand();

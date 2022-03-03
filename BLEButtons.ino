@@ -129,12 +129,12 @@ void protocolLedCallback(uint8_t ledNumber, bool turnOn)
   if (turnOn)
   {
     devices.turnOnLED(ledNumber);
-    protocolProcessor.sendStatus("led", "on", ledNumber);
+    protocolProcessor.sendStatus("led", "on", ledNumber, true);
   }
   else
   {
     devices.turnOffLED(ledNumber);
-    protocolProcessor.sendStatus("led", "on", ledNumber);
+    protocolProcessor.sendStatus("led", "off", ledNumber, true);
   }
 }
 
@@ -146,5 +146,5 @@ void protocolReportCallback()
   Settings.report(jsonDocument);
   WifiHandler.report(jsonDocument);
 
-  protocolProcessor.sendReport(jsonDocument);
+  protocolProcessor.send(jsonDocument);
 }

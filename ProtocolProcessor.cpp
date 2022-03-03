@@ -13,15 +13,15 @@ ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolRe
     this->commands = new Command *[COMMAND_COUNT]
     {
         new Command("led", [this]()
-                  { ExecuteLedCommand(); }),
-        new Command("wifisid", [this]()
-                  { ExecuteSetWiFiSIDCommand(); }),
-        new Command("wifipassword", [this]()
-                  { ExecuteSetWiFiPasswordCommand(); }),
-        new Command("clearsettings", [this]()
-                  { ExecuteClearSettingsCommand(); }),
-        new Command("report", [this]()
-                  { ExecuteReportCommand(); })
+                    { ExecuteLedCommand(); }),
+            new Command("wifisid", [this]()
+                        { ExecuteSetWiFiSIDCommand(); }),
+            new Command("wifipassword", [this]()
+                        { ExecuteSetWiFiPasswordCommand(); }),
+            new Command("clearsettings", [this]()
+                        { ExecuteClearSettingsCommand(); }),
+            new Command("report", [this]()
+                        { ExecuteReportCommand(); })
     };
 }
 void ProtocolProcessor::begin(BluetoothSerial *serialBT)
@@ -92,56 +92,39 @@ void ProtocolProcessor::processDocument()
             }
         }
     }
-
-
 }
 
 void ProtocolProcessor::logJsonDocument()
 {
     String json;
     serializeJson(jsonDocument, json);
-    Log.traceln("%s",json.c_str());
+    Log.traceln("%s", json.c_str());
 }
 
- /////////////////////////////
+/////////////////////////////
 
-
-void ProtocolProcessor::sendStatus(const char * type, const char *status, uint8_t number )
+void ProtocolProcessor::sendStatus(const char *type, const char *status, uint8_t number, bool isAck )
 {
     DynamicJsonDocument jsonDocument(100);
-    String json;
-
     jsonDocument["type"] = type;
     jsonDocument["status"] = status;
     jsonDocument["number"] = number;
-
-    serializeJson(jsonDocument, json);
-
-    size_t count = json.length();
-    const char *buffer = json.c_str();
-
-    for (size_t i = 0; i < count; i++)
-    {
-        serialBT->write(buffer[i]);
-    }
+    jsonDocument["isAck"] = isAck;
+    send(jsonDocument);
 }
 
-void ProtocolProcessor::sendReport(JsonDocument &jsonReportDocument)
+void ProtocolProcessor::send(JsonDocument &jsonDocument)
 {
     String json;
-    serializeJson(jsonReportDocument, json);
+    serializeJson(jsonDocument, json);
     json.concat("\r\r");
 
-    const char *jsonBuffer = json.c_str();
-    Log.traceln("Sending requested report: %s", json.c_str());
     uint16_t length = json.length();
+    const char *buffer = json.c_str();
 
-    uint16_t index = 0;
-
-    while (index < length)
+    for (size_t i = 0; i < length; i++)
     {
-        serialBT->write(jsonBuffer[index]);
-        index++;
+        serialBT->write(buffer[i]);
     }
 }
 
@@ -189,11 +172,13 @@ void ProtocolProcessor::ExecuteSetWiFiPasswordCommand()
     Settings.writeWiFiPassword(password);
 }
 
-void ProtocolProcessor::ExecuteClearSettingsCommand() {
+void ProtocolProcessor::ExecuteClearSettingsCommand()
+{
     Settings.clear();
 }
 
-void ProtocolProcessor::ExecuteReportCommand() {
-    if(reportCallback != NULL)
+void ProtocolProcessor::ExecuteReportCommand()
+{
+    if (reportCallback != NULL)
         reportCallback();
 }
