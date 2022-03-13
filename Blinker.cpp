@@ -24,3 +24,4 @@ void Blinker::blink()
 		_isOn = true;
 	}
 }
+

@@ -6,7 +6,6 @@ class Blinker
 {
 public:
 	Blinker();
-
 	void tick();
 
 private:
