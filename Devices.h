@@ -12,6 +12,7 @@ private:
     Adafruit_seesaw seesaw;
     uint16_t pid;
     uint8_t year, mon, day;
+    bool seesawReady = false;
     ButtonChangeCallback buttonChangeCallback;
 
 

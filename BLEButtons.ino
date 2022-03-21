@@ -20,11 +20,11 @@
 
 const char btDeviceName[] = "BLEButtons";
 
-#define VS1053_RESET   -1     // VS1053 reset pin (not used!)
-#define VS1053_CS 32   // VS1053 chip select pin (output)
-#define VS1053_DCS 33  // VS1053 Data/command select pin (output)
-#define CARDCS 14      // Card chip select pin
-#define VS1053_DREQ 15 // VS1053 Data request, ideally an Interrupt pin
+#define VS1053_RESET -1 // VS1053 reset pin (not used!)
+#define VS1053_CS 32    // VS1053 chip select pin (output)
+#define VS1053_DCS 33   // VS1053 Data/command select pin (output)
+#define CARDCS 14       // Card chip select pin
+#define VS1053_DREQ 15  // VS1053 Data request, ideally an Interrupt pin
 
 // Scheduler
 Scheduler scheduler;
@@ -36,7 +36,7 @@ Task batteryTask;
 
 Blinker blinker;
 Devices devices(&deviceButtonCallback);
-ProtocolProcessor protocolProcessor(&protocolLedCallback, &protocolReportCallback);
+ProtocolProcessor protocolProcessor(&protocolLedCallback, &protocolReportCallback, &protocolPlayCallback);
 ESPBattery battery(&batteryCallback);
 SoundPlayer soundPlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, CARDCS);
 
@@ -47,22 +47,30 @@ void setup()
 
   // Start serial logging
   Serial.begin(115200);
-  Log.begin(LOG_LEVEL_VERBOSE, &Serial);
+  Log.begin(LOG_LEVEL_VERBOSE, &Serial, false);
   Settings.being();
+  devices.begin();
 
-  // Start bluetooth and the protocol processor that wull send and receive commands
-  serialBT.begin(btDeviceName);
-  protocolProcessor.begin(&serialBT);
-
-  Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), btDeviceName);
-
- devices.begin();
- 
-  if (! soundPlayer.begin()) { 
-     Log.errorln(F("Couldn't find VS1053"));
+  if (!serialBT.begin(btDeviceName))
+  {
+    Log.errorln(F("Couldn't initialize Bluetooth"));
   }
 
-  WifiHandler.connect();
+  protocolProcessor.begin(&serialBT);
+  Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), btDeviceName);
+
+  if (!soundPlayer.begin())
+  {
+    Log.errorln(F("Couldn't initialize VS1053"));
+  }
+  soundPlayer.setVolume(0, 0);
+
+  if (!SD.begin(CARDCS))
+  {
+    Log.errorln(F("Couldn't initialize SD card"));
+  }
+
+  // WifiHandler.connect();
 
   // Blink Task
   blinkTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &blinkTick);
@@ -87,39 +95,11 @@ void setup()
   batteryTask.set(TASK_MILLISECOND * 60000 * 1, TASK_FOREVER, &batteryTick);
   scheduler.addTask(batteryTask);
   batteryTask.enable();
-
-  //soundPlayer.sciWrite(VS1053_REG_WRAMADDR, VS1053_GPIO_DDR);
-  //soundPlayer.sciWrite(VS1053_REG_WRAM, 3);
-  //soundPlayer.sciWrite(VS1053_REG_WRAMADDR, VS1053_GPIO_ODATA);
-  //soundPlayer.sciWrite(VS1053_REG_WRAM, 0);
-  //delay(100);
-  //soundPlayer.softReset();
-  
-  soundPlayer.setVolume(0,0);  
-  soundPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);  // DREQ int
-
-  if (!SD.begin(CARDCS)) {
-    Log.errorln(F("SD failed, or not present"));
-  } else {
-    // list files
-    printDirectory(SD.open("/"), 0);
-  }
-  
-
-  
-  soundPlayer.playFullFile("/hello001.mp3"); 
 }
 
 void loop()
 {
   scheduler.execute();
-
-  /* eziya76, when IRQ fires, handler set DREQFlag */
-  if(soundPlayer.DREQFlag) {
-    /* feed buffer when DREQ interrupt */
-    soundPlayer.feedBuffer();
-    soundPlayer.DREQFlag = false;
-  }
 }
 
 void btWriteMessage(String *message)
@@ -215,27 +195,8 @@ void batteryCallback(ESPBattery &b)
   Log.traceln(F("Current voltage: %f"), voltage);
 }
 
-void printDirectory(File dir, int numTabs) {
-   while(true) {
-     
-     File entry =  dir.openNextFile();
-     if (! entry) {
-       // no more files
-       //Serial.println("**nomorefiles**");
-       break;
-     }
-     for (uint8_t i=0; i<numTabs; i++) {
-       Log.trace("\t");
-     }
-     Serial.print(entry.name());
-     if (entry.isDirectory()) {
-       Log.traceln("/");
-       printDirectory(entry, numTabs+1);
-     } else {
-       // files have sizes, directories do not
-       Log.trace("\t\t");
-       Log.traceln("%d",entry.size());
-     }
-     entry.close();
-   }
+void protocolPlayCallback(const char *filename)
+{
+  Log.traceln(F("Play: %s"), filename);
+  soundPlayer.play(filename);
 }

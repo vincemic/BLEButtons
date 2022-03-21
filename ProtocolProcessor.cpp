@@ -1,15 +1,17 @@
 #include "ProtocolProcessor.h"
 #include <ArduinoLog.h>
 #include "Settings.h"
-#define COMMAND_COUNT 5
+#define COMMAND_COUNT 6
 
-ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback)
+ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback)
     : jsonDocument(250),
       protocolStream(250)
 {
 
     this->ledCallback = ledCallback;
     this->reportCallback = reportCallback;
+    this->playCallback = playCallback;
+    
     this->commands = new Command *[COMMAND_COUNT]
     {
         new Command("led", [this]()
@@ -21,7 +23,9 @@ ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolRe
             new Command("clearsettings", [this]()
                         { ExecuteClearSettingsCommand(); }),
             new Command("report", [this]()
-                        { ExecuteReportCommand(); })
+                        { ExecuteReportCommand(); }),
+            new Command("play", [this]()
+                        { ExecutePlayCommand(); })
     };
 }
 void ProtocolProcessor::begin(BluetoothSerial *serialBT)
@@ -181,4 +185,11 @@ void ProtocolProcessor::ExecuteReportCommand()
 {
     if (reportCallback != NULL)
         reportCallback();
+}
+
+void ProtocolProcessor::ExecutePlayCommand()
+{
+    const char *filename = jsonDocument["filename"];
+    if (playCallback != NULL)
+        playCallback(filename);
 }

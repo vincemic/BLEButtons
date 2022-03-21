@@ -1,6 +1,6 @@
 #include "LoopbackStream.h"
 
-LoopbackStream::LoopbackStream(uint16_t buffer_size)
+LoopbackStream::LoopbackStream(size_t buffer_size)
 {
   this->buffer = (uint8_t *)malloc(buffer_size);
   this->buffer_size = buffer_size;
@@ -45,7 +45,7 @@ size_t LoopbackStream::write(uint8_t v)
   }
   else
   {
-    int p = pos + size;
+    size_t p = pos + size;
     if (p >= buffer_size)
     {
       p -= buffer_size;
@@ -54,6 +54,16 @@ size_t LoopbackStream::write(uint8_t v)
     size++;
     return 1;
   }
+}
+
+size_t LoopbackStream::availableLarge()
+{
+  return size;
+}
+
+size_t LoopbackStream::availableForWriteLarge()
+{
+  return buffer_size - size;
 }
 
 int LoopbackStream::available()
@@ -86,4 +96,8 @@ int LoopbackStream::peek()
 
 void LoopbackStream::flush()
 {
+}
+
+void LoopbackStream::setLoopOff() {
+  shouldLoop = false;
 }

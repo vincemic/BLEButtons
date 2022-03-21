@@ -1,39 +1,32 @@
+#pragma once
 #include <Adafruit_VS1053.h>
+#include <ArduinoJson.h>
 
-class SoundPlayer : public Adafruit_VS1053 {
+class SoundPlayer : public Adafruit_VS1053
+{
 
 public:
-    SoundPlayer();
+  SoundPlayer(int8_t rst, int8_t cs, int8_t dcs, int8_t dreq,
+              int8_t cardCS);
 
-public:
-  SoundPlayer (int8_t mosi, int8_t miso, int8_t clk, 
-			      int8_t rst, int8_t cs, int8_t dcs, int8_t dreq,
-			      int8_t cardCS);
-  SoundPlayer (int8_t rst, int8_t cs, int8_t dcs, int8_t dreq,
-			      int8_t cardCS);
-  SoundPlayer (int8_t cs, int8_t dcs, int8_t dreq,
-			      int8_t cardCS);
-
-  /* eziya76, Add flag for interrupt handling */
-  boolean DREQFlag;
+  volatile boolean _dREQFlag = false;
 
   boolean begin(void);
   boolean useInterrupt(uint8_t type);
-  File currentTrack;
   volatile boolean playingMusic;
-  void feedBuffer(void);
-  static boolean isMP3File(const char* fileName);
+  void feedBuffer();
+  static boolean isMP3File(const char *fileName);
   unsigned long mp3_ID3Jumper(File mp3);
-  boolean startPlayingFile(const char *trackname);
-  boolean playFullFile(const char *trackname);
-  void stopPlaying(void);
-  boolean paused(void);
+  boolean play(const char *trackname);
+  void stop(void);
   boolean stopped(void);
   void pausePlaying(boolean pause);
 
- private:
-  void feedBuffer_noLock(void);
+  void printDirectory(const char *path, int numTabs);
+  void printDirectory(File dir, int numTabs);
+void report(JsonDocument &jsonDocument);
 
+private:
   uint8_t _cardCS;
+  volatile bool feedLock = false;
 };
-

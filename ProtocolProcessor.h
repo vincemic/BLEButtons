@@ -6,18 +6,18 @@
 #define BUFFER_SIZE 500
 typedef void (*ProtocolLedCallback)(uint8_t, bool);
 typedef void (*ProtocolReportCallbback)();
+typedef void (*ProtocolPlayCallbback)(const char *filename);
 class ProtocolProcessor
 {
 
 private:
-   
     typedef std::function<void()> CommandFunction;
     struct Command
     {
         CommandFunction commandFunction;
         const char *name;
 
-        Command(const char *name,CommandFunction commandFunction)
+        Command(const char *name, CommandFunction commandFunction)
         {
             this->name = name;
             this->commandFunction = commandFunction;
@@ -30,6 +30,7 @@ private:
     BluetoothSerial *serialBT;
     ProtocolLedCallback ledCallback;
     ProtocolReportCallbback reportCallback;
+    ProtocolPlayCallbback playCallback;
     Command **commands;
 
     void process(uint8_t character);
@@ -37,11 +38,11 @@ private:
     void logJsonDocument();
 
 public:
-    ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback);
+    ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback);
     void begin(BluetoothSerial *serialBT);
     void tick();
 
-    void sendStatus(const char * type, const char *status, uint8_t number , bool isAck = false);
+    void sendStatus(const char *type, const char *status, uint8_t number, bool isAck = false);
     void send(JsonDocument &jsonDocument);
 
     void ExecuteLedCommand();
@@ -49,5 +50,5 @@ public:
     void ExecuteSetWiFiPasswordCommand();
     void ExecuteClearSettingsCommand();
     void ExecuteReportCommand();
-
+    void ExecutePlayCommand();
 };

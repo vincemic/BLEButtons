@@ -11,7 +11,7 @@ bool WifiHandlerClass::connect()
 {
     String sid;
     String password;
-    bool result = false;
+    wl_status_t status = WL_NO_SHIELD;
 
     Settings.readWiFiSID(sid);
     Settings.readWiFiPassword(password);
@@ -20,11 +20,14 @@ bool WifiHandlerClass::connect()
 
     Log.noticeln(F("Connecting to %s ...."), sid);
 
-    WiFi.begin(sid.c_str(), password.c_str());
+    status = WiFi.begin(sid.c_str(), password.c_str());
 
-    WiFi.waitForConnectResult(5000);
+    while(status != WL_CONNECTED && status != WL_CONNECT_FAILED) {
+        delay(500);
+        status = WiFi.status();
+    }
 
-    return result;
+    return status == WL_CONNECTED;
 }
 
 void WifiHandlerClass::disconnect()

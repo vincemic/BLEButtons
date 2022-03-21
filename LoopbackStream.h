@@ -12,13 +12,15 @@
 class LoopbackStream : public Stream
 {
   uint8_t *buffer;
-  uint16_t buffer_size;
-  uint16_t pos, size;
+  size_t buffer_size;
+  size_t pos, size;
+  bool shouldLoop = true;
+
 
 public:
   static const uint16_t DEFAULT_SIZE = 64;
 
-  LoopbackStream(uint16_t buffer_size = LoopbackStream::DEFAULT_SIZE);
+  LoopbackStream(size_t buffer_size = LoopbackStream::DEFAULT_SIZE);
   ~LoopbackStream();
 
   /** Clear the buffer */
@@ -26,10 +28,12 @@ public:
 
   virtual size_t write(uint8_t);
   virtual int availableForWrite(void);
-
   virtual int available();
+  virtual size_t availableForWriteLarge(void);
+  virtual size_t availableLarge();
   virtual bool contains(char);
   virtual int read();
   virtual int peek();
   virtual void flush();
+  virtual void setLoopOff();
 };

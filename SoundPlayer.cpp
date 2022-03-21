@@ -1,26 +1,29 @@
 #include "SoundsPlayer.h"
+#include <ArduinoLog.h>
 
-  
+#include "LoopbackStream.h"
+
 
 static SoundPlayer *myself;
+LoopbackStream superStream(50000);
 
 #ifndef _BV
-  #define _BV(x) (1<<(x))
+#define _BV(x) (1 << (x))
 #endif
 
+static void feeder(void)
+{
+  //myself->_dREQFlag = true;
+  myself->feedBuffer();
 
-volatile boolean feedBufferLock2 = false;
-
-static void feeder(void) {  
-  /* eziya76, set flag and exits ISR */
-  //myself->feedBuffer();
-  myself->DREQFlag = true;
 }
 
-boolean SoundPlayer::useInterrupt(uint8_t type) {
-  myself = this;  // oy vey
-    
-  if (type == VS1053_FILEPLAYER_TIMER0_INT) {
+boolean SoundPlayer::useInterrupt(uint8_t type)
+{
+  myself = this; // oy vey
+
+  if (type == VS1053_FILEPLAYER_TIMER0_INT)
+  {
 #if defined(__AVR__)
     OCR0A = 0xAF;
     TIMSK0 |= _BV(OCIE0A);
@@ -38,23 +41,24 @@ boolean SoundPlayer::useInterrupt(uint8_t type) {
 
     // Set up an interrupt on channel 1
     timer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
-    timer.setCompare(TIMER_CH1, 1);  // Interrupt 1 count after each update
-    timer.attachCompare1Interrupt(feeder); 
+    timer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
+    timer.attachCompare1Interrupt(feeder);
 
     // Refresh the timer's count, prescale, and overflow
     timer.refresh();
 
     // Start the timer counting
     timer.resume();
-    
+
 #else
     return false;
 #endif
   }
-  if (type == VS1053_FILEPLAYER_PIN_INT) {
+  if (type == VS1053_FILEPLAYER_PIN_INT)
+  {
     int8_t irq = digitalPinToInterrupt(_dreq);
-    //Serial.print("Using IRQ "); Serial.println(irq);
-    if (irq == -1) 
+    // Serial.print("Using IRQ "); Serial.println(irq);
+    if (irq == -1)
       return false;
 #if defined(SPI_HAS_TRANSACTION) && !defined(ESP8266) && !defined(ESP32) && !defined(ARDUINO_STM32_FEATHER)
     SPI.usingInterrupt(irq);
@@ -67,212 +71,252 @@ boolean SoundPlayer::useInterrupt(uint8_t type) {
 }
 
 SoundPlayer::SoundPlayer(
-	       int8_t rst, int8_t cs, int8_t dcs, int8_t dreq, 
-	       int8_t cardcs) 
-               : Adafruit_VS1053(rst, cs, dcs, dreq) {
-
+    int8_t rst, int8_t cs, int8_t dcs, int8_t dreq,
+    int8_t cardcs)
+    : Adafruit_VS1053(rst, cs, dcs, dreq)
+{
+  superStream.setLoopOff();
   playingMusic = false;
   _cardCS = cardcs;
 }
 
-SoundPlayer::SoundPlayer(
-	       int8_t cs, int8_t dcs, int8_t dreq, 
-	       int8_t cardcs) 
-  : Adafruit_VS1053(-1, cs, dcs, dreq) {
-
-  playingMusic = false;
-  _cardCS = cardcs;
-}
-
-SoundPlayer::SoundPlayer(
-               int8_t mosi, int8_t miso, int8_t clk, 
-	       int8_t rst, int8_t cs, int8_t dcs, int8_t dreq, 
-	       int8_t cardcs) 
-               : Adafruit_VS1053(mosi, miso, clk, rst, cs, dcs, dreq) {
-
-  playingMusic = false;
-  _cardCS = cardcs;
-}
-
-boolean SoundPlayer::begin(void) {
+boolean SoundPlayer::begin(void)
+{
   // Set the card to be disabled while we get the VS1053 up
-  pinMode(_cardCS, OUTPUT);
-  digitalWrite(_cardCS, HIGH);  
+  //pinMode(_cardCS, OUTPUT);
+  //digitalWrite(_cardCS, HIGH);
 
-  uint8_t v  = Adafruit_VS1053::begin();   
+  uint8_t v = Adafruit_VS1053::begin();
 
-  //dumpRegs();
-  //Serial.print("Version = "); Serial.println(v);
+  useInterrupt(VS1053_FILEPLAYER_PIN_INT); // DREQ int
+
+  //if (SD.begin(_cardCS))
+  //{
+    //printDirectory("/", 0);
+ // }
+
+ 
+
+  // dumpRegs();
+  // Serial.print("Version = "); Serial.println(v);
   return (v == 4);
 }
 
-
-boolean SoundPlayer::playFullFile(const char *trackname) {
-  if (! startPlayingFile(trackname)) return false;
-
-  while (playingMusic) {
-    // twiddle thumbs
-    feedBuffer();
-    delay(5);           // give IRQs a chance
-  }
-  // music file finished!
-  return true;
-}
-
-void SoundPlayer::stopPlaying(void) {
-  // cancel all playback
-  sciWrite(VS1053_REG_MODE, VS1053_MODE_SM_LINE1 | VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
-  
+void SoundPlayer::stop(void)
+{
   // wrap it up!
   playingMusic = false;
-  currentTrack.close();
+    delay(500);
+
+  while(feedLock)
+    delay(5);
+
+  // cancel all playback
+  sciWrite(VS1053_REG_MODE, VS1053_MODE_SM_LINE1 | VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
+
+  delay(5);
 }
 
-void SoundPlayer::pausePlaying(boolean pause) {
-  if (pause) 
-    playingMusic = false;
-  else {
-    playingMusic = true;
-    feedBuffer();
-  }
-}
-
-boolean SoundPlayer::paused(void) {
-  return (!playingMusic && currentTrack);
-}
-
-boolean SoundPlayer::stopped(void) {
-  return (!playingMusic && !currentTrack);
+boolean SoundPlayer::stopped(void)
+{
+  return (!playingMusic);
 }
 
 // Just checks to see if the name ends in ".mp3"
-boolean SoundPlayer::isMP3File(const char* fileName) {
+boolean SoundPlayer::isMP3File(const char *fileName)
+{
   return (strlen(fileName) > 4) && !strcasecmp(fileName + strlen(fileName) - 4, ".mp3");
 }
 
-unsigned long SoundPlayer::mp3_ID3Jumper(File mp3) {
+unsigned long SoundPlayer::mp3_ID3Jumper(File mp3)
+{
 
   char tag[4];
   uint32_t start;
   unsigned long current;
-	
+
   start = 0;
-  if (mp3) {
-  	current = mp3.position();
-    if (mp3.seek(0)) {
-      if (mp3.read((uint8_t*) tag,3)) {
-      	tag[3] = '\0';
-        if (!strcmp(tag, "ID3")) {
-          if (mp3.seek(6)) {
-            start = 0ul ;
-            for (byte i = 0 ; i < 4 ; i++) {
-              start <<= 7 ;
-              start |= (0x7F & mp3.read()) ;
-  	        }
-          } else {
-            //Serial.println("Second seek failed?");
+  if (mp3)
+  {
+    current = mp3.position();
+    if (mp3.seek(0))
+    {
+      if (mp3.read((uint8_t *)tag, 3))
+      {
+        tag[3] = '\0';
+        if (!strcmp(tag, "ID3"))
+        {
+          if (mp3.seek(6))
+          {
+            start = 0ul;
+            for (byte i = 0; i < 4; i++)
+            {
+              start <<= 7;
+              start |= (0x7F & mp3.read());
+            }
           }
-        } else {
-          //Serial.println("It wasn't the damn TAG.");
+          else
+          {
+            // Serial.println("Second seek failed?");
+          }
         }
-      } else {
-        //Serial.println("Read for the tag failed");
+        else
+        {
+          // Serial.println("It wasn't the damn TAG.");
+        }
       }
-    } else {
-      //Serial.println("Seek failed? How can seek fail?");
+      else
+      {
+        // Serial.println("Read for the tag failed");
+      }
     }
-    mp3.seek(current);	// Put you things away like you found 'em.
-  } else {
-    //Serial.println("They handed us a NULL file!");
+    else
+    {
+      // Serial.println("Seek failed? How can seek fail?");
+    }
+    mp3.seek(current); // Put you things away like you found 'em.
   }
-  //Serial.print("Jumper returning: "); Serial.println(start);
+  else
+  {
+    // Serial.println("They handed us a NULL file!");
+  }
+  // Serial.print("Jumper returning: "); Serial.println(start);
   return start;
 }
 
+boolean SoundPlayer::play(const char *trackname)
+{
+  stop();
 
-boolean SoundPlayer::startPlayingFile(const char *trackname) {
   // reset playback
   sciWrite(VS1053_REG_MODE, VS1053_MODE_SM_LINE1 | VS1053_MODE_SM_SDINEW);
   // resync
   sciWrite(VS1053_REG_WRAMADDR, 0x1e29);
   sciWrite(VS1053_REG_WRAM, 0);
 
-  currentTrack = SD.open(trackname);
-  if (!currentTrack) {
+  delay(5);
+  
+  superStream.clear();
+  File currentTrack = SD.open(trackname);
+
+  if (!currentTrack)
+  {
     return false;
   }
-    
+
   // We know we have a valid file. Check if .mp3
   // If so, check for ID3 tag and jump it if present.
-  if (isMP3File(trackname)) {
+  if (isMP3File(trackname))
+  {
     currentTrack.seek(mp3_ID3Jumper(currentTrack));
   }
-
-  // don't let the IRQ get triggered by accident here
-  noInterrupts();
 
   // As explained in datasheet, set twice 0 in REG_DECODETIME to set time back to 0
   sciWrite(VS1053_REG_DECODETIME, 0x00);
   sciWrite(VS1053_REG_DECODETIME, 0x00);
 
+
+  while (currentTrack.available() > 0 && superStream.availableForWriteLarge() >= VS1053_DATABUFFERLEN)
+  {
+    size_t count = currentTrack.read(mp3buffer, VS1053_DATABUFFERLEN);
+
+    for (size_t index = 0; index < count; index++)
+    {
+      superStream.write(mp3buffer[index]);
+    }
+  }
+
+  currentTrack.close();
+
   playingMusic = true;
 
-  // wait till its ready for data
-  while (! readyForData() ) {
-#if defined(ESP8266)
-	yield();
-#endif
-  }
-
   // fill it up!
-  while (playingMusic && readyForData()) {
-    feedBuffer();
-  }
-  
-  // ok going forward, we can use the IRQ
-  interrupts();
+  feedBuffer();
 
   return true;
 }
 
-void SoundPlayer::feedBuffer(void) {
-  noInterrupts();
-  // dont run twice in case interrupts collided
-  // This isn't a perfect lock as it may lose one feedBuffer request if
-  // an interrupt occurs before feedBufferLock2 is reset to false. This
-  // may cause a glitch in the audio but at least it will not corrupt
-  // state.
-  if (feedBufferLock2) {
-    interrupts();
+void SoundPlayer::feedBuffer(void)
+{
+  if(feedLock)
     return;
-  }
-  feedBufferLock2 = true;
-  interrupts();
+  
+  feedLock = true;
 
-  feedBuffer_noLock();
-
-  feedBufferLock2 = false;
-}
-
-void SoundPlayer::feedBuffer_noLock(void) {
-  if ((! playingMusic) // paused or stopped
-      || (! currentTrack) 
-      || (! readyForData())) {
-    return; // paused or stopped
+  if (!playingMusic)
+  {
+    feedLock = false;
+    return; 
   }
 
   // Feed the hungry buffer! :)
-  while (readyForData()) {
-    // Read some audio data from the SD card file
-    int bytesread = currentTrack.read(mp3buffer, VS1053_DATABUFFERLEN);
-    
-    if (bytesread == 0) {
+  while (readyForData() && playingMusic)
+  {
+    int bytesread = 0;
+
+    while (superStream.availableLarge() > 0 && bytesread < VS1053_DATABUFFERLEN)
+    {
+      mp3buffer[bytesread] = superStream.read();
+      bytesread++;
+    }
+
+    if (bytesread == 0)
+    {
       // must be at the end of the file, wrap it up!
       playingMusic = false;
-      currentTrack.close();
       break;
     }
 
     playData(mp3buffer, bytesread);
   }
+
+  feedLock = false;
+}
+
+void SoundPlayer::report(JsonDocument &jsonDocument)
+{
+    auto o = jsonDocument["files"];
+}
+
+void SoundPlayer::printDirectory(const char *path, int numTabs)
+{
+  File dir = SD.open(path);
+
+  if (dir && dir.isDirectory())
+    printDirectory(dir, numTabs);
+
+  dir.close();
+}
+void SoundPlayer::printDirectory(File dir, int numTabs)
+{
+  while (true)
+  {
+
+    File entry = dir.openNextFile();
+    if (!entry)
+    {
+      // no more files
+      // Serial.println("**nomorefiles**");
+      break;
+    }
+    for (uint8_t i = 0; i < numTabs; i++)
+    {
+      Log.trace("\t");
+    }
+    Serial.print(entry.name());
+    if (entry.isDirectory())
+    {
+      Log.traceln("/");
+      printDirectory(entry, numTabs + 1);
+    }
+    else
+    {
+      // files have sizes, directories do not
+      Log.trace("\t\t");
+      Log.traceln("%d", entry.size());
+    }
+    entry.close();
+  }
+
+ 
 }

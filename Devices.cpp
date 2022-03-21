@@ -40,33 +40,36 @@ void Devices::begin()
 
 void Devices::tick()
 {
-    bool switchOn = false;
-
-    for (button &btn : buttons)
+    if (seesawReady)
     {
+        bool switchOn = false;
 
-        switchOn = !seesaw.digitalRead(btn.pin);
-
-        if (switchOn)
+        for (button &btn : buttons)
         {
-            if (!btn.debounce)
-            {
-                Log.traceln(F("Button %d on"), btn.index + 1);
-                btn.debounce = true;
 
-                if (buttonChangeCallback != NULL)
-                    buttonChangeCallback(btn.index + 1, true);
+            switchOn = !seesaw.digitalRead(btn.pin);
+
+            if (switchOn)
+            {
+                if (!btn.debounce)
+                {
+                    Log.traceln(F("Button %d on"), btn.index + 1);
+                    btn.debounce = true;
+
+                    if (buttonChangeCallback != NULL)
+                        buttonChangeCallback(btn.index + 1, true);
+                }
             }
-        }
-        else if (!switchOn)
-        {
-            if (btn.debounce)
+            else if (!switchOn)
             {
-                Log.traceln(F("Button %d off"), btn.index + 1);
-                btn.debounce = false;
+                if (btn.debounce)
+                {
+                    Log.traceln(F("Button %d off"), btn.index + 1);
+                    btn.debounce = false;
 
-                if (buttonChangeCallback != NULL)
-                    buttonChangeCallback(btn.index + 1, false);
+                    if (buttonChangeCallback != NULL)
+                        buttonChangeCallback(btn.index + 1, false);
+                }
             }
         }
     }
@@ -77,42 +80,50 @@ bool Devices::startSeesaw()
     if (!seesaw.begin(DEFAULT_I2C_ADDR))
     {
         Log.errorln(F("seesaw not found!"));
-        return false;
+        seesawReady = false;
     }
-
-    seesaw.getProdDatecode(&pid, &year, &mon, &day);
-    Log.noticeln(F("seesaw found PID: %d datecode: %d/%d/%d"), pid, 2000 + year, mon, day);
-
-    if (pid != 5296)
+    else
     {
-        Log.errorln(F("Wrong seesaw PID"));
-        return false;
+
+        seesaw.getProdDatecode(&pid, &year, &mon, &day);
+        Log.noticeln(F("seesaw found PID: %d datecode: %d/%d/%d"), pid, 2000 + year, mon, day);
+
+        if (pid != 5296)
+        {
+            Log.errorln(F("Wrong seesaw PID"));
+            seesawReady = false;
+        }
+        else
+        {
+
+            Log.noticeln(F("seesaw started OK!"));
+
+            for (button btn : buttons)
+            {
+                seesaw.pinMode(btn.pin, INPUT_PULLUP);
+            }
+
+            for (led l : leds)
+            {
+                seesaw.analogWrite(l.pin, 0);
+            }
+
+            seesawReady = true;
+        }
     }
 
-    Log.noticeln(F("seesaw started OK!"));
-
-    for (button btn : buttons)
-    {
-        seesaw.pinMode(btn.pin, INPUT_PULLUP);
-    }
-
-    for (led l : leds)
-    {
-        seesaw.analogWrite(l.pin, 0);
-    }
-
-    return true;
+    return seesawReady;
 }
 
 void Devices::turnOnLED(uint8_t number)
 {
     uint8_t index = number - 1;
-    if (index >= 0 && number < sizeof(leds))
+    if (index >= 0 && number < sizeof(leds) && seesawReady)
         seesaw.analogWrite(leds[index].pin, 127);
 }
 void Devices::turnOffLED(uint8_t number)
 {
     uint8_t index = number - 1;
-    if (index >= 0 && number < sizeof(leds))
+    if (index >= 0 && number < sizeof(leds) && seesawReady)
         seesaw.analogWrite(leds[index].pin, 0);
 }
