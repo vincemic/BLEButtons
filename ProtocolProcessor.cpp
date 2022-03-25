@@ -117,6 +117,16 @@ void ProtocolProcessor::sendStatus(const char *type, const char *status, uint8_t
     send(jsonDocument);
 }
 
+void ProtocolProcessor::sendStatus(const char *type, const char *status, const char *detail, bool isAck )
+{
+    DynamicJsonDocument jsonDocument(100);
+    jsonDocument["type"] = type;
+    jsonDocument["status"] = status;
+    jsonDocument["detail"] = detail;
+    jsonDocument["isAck"] = isAck;
+    send(jsonDocument);
+}
+
 void ProtocolProcessor::send(JsonDocument &jsonDocument)
 {
     String json;

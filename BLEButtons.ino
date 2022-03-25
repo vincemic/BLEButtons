@@ -70,7 +70,9 @@ void setup()
     Log.errorln(F("Couldn't initialize SD card"));
   }
 
-  // WifiHandler.connect();
+  delay(9000);
+  
+  WifiHandler.connect();
 
   // Blink Task
   blinkTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &blinkTick);
@@ -95,6 +97,12 @@ void setup()
   batteryTask.set(TASK_MILLISECOND * 60000 * 1, TASK_FOREVER, &batteryTick);
   scheduler.addTask(batteryTask);
   batteryTask.enable();
+
+  Log.infoln("Total heap: %d", ESP.getHeapSize());
+  Log.infoln("Free heap: %d", ESP.getFreeHeap());
+  Log.infoln("Total PSRAM: %d", ESP.getPsramSize());
+  Log.infoln("Free PSRAM: %d", ESP.getFreePsram());
+  Log.infoln("Flash chip size: %d",ESP.getFlashChipSize());
 }
 
 void loop()
@@ -181,6 +189,12 @@ void protocolReportCallback()
   WifiHandler.report(jsonDocument);
   battery.report(jsonDocument);
 
+  jsonDocument[F("memory")][F("totaheap")] = ESP.getHeapSize();
+  jsonDocument[F("memory")][F("freeheap")] = ESP.getFreeHeap();
+  jsonDocument[F("memory")][F("totalpsram")] = ESP.getPsramSize();
+  jsonDocument[F("memory")][F("freepsram")] = ESP.getFreePsram();
+  jsonDocument[F("memory")][F("flashchipsize")] = ESP.getFlashChipSize();
+
   protocolProcessor.send(jsonDocument);
 }
 
@@ -199,4 +213,5 @@ void protocolPlayCallback(const char *filename)
 {
   Log.traceln(F("Play: %s"), filename);
   soundPlayer.play(filename);
+  protocolProcessor.sendStatus("sound", "play", filename, true);
 }

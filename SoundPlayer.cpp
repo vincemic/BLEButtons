@@ -11,9 +11,9 @@ LoopbackStream superStream(50000);
 #define _BV(x) (1 << (x))
 #endif
 
-static void feeder(void)
+IRAM_ATTR void feeder(void)
 {
-  //myself->_dREQFlag = true;
+  myself->_dREQFlag = true;
   myself->feedBuffer();
 
 }
