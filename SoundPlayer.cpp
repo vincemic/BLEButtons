@@ -1,21 +1,30 @@
 #include "SoundsPlayer.h"
 #include <ArduinoLog.h>
 
-#include "LoopbackStream.h"
-
-
 static SoundPlayer *myself;
-LoopbackStream superStream(50000);
 
 #ifndef _BV
 #define _BV(x) (1 << (x))
 #endif
 
-IRAM_ATTR void feeder(void)
+void feederTask(void *parameter)
+{
+
+  while (true)
+  {
+    if (myself->_dREQFlag)
+    {
+      myself->_dREQFlag = false;
+      myself->feedBuffer();
+    }
+
+    vTaskDelay(40);
+  }
+}
+
+IRAM_ATTR static void feederISR(void)
 {
   myself->_dREQFlag = true;
-  myself->feedBuffer();
-
 }
 
 boolean SoundPlayer::useInterrupt(uint8_t type)
@@ -64,7 +73,7 @@ boolean SoundPlayer::useInterrupt(uint8_t type)
     SPI.usingInterrupt(irq);
 #endif
     /* eziya76, changed from CHANGE to RISING */
-    attachInterrupt(irq, feeder, RISING);
+    attachInterrupt(irq, feederISR, RISING);
     return true;
   }
   return false;
@@ -75,30 +84,26 @@ SoundPlayer::SoundPlayer(
     int8_t cardcs)
     : Adafruit_VS1053(rst, cs, dcs, dreq)
 {
-  superStream.setLoopOff();
   playingMusic = false;
   _cardCS = cardcs;
 }
 
 boolean SoundPlayer::begin(void)
 {
-  // Set the card to be disabled while we get the VS1053 up
-  //pinMode(_cardCS, OUTPUT);
-  //digitalWrite(_cardCS, HIGH);
-
   uint8_t v = Adafruit_VS1053::begin();
 
   useInterrupt(VS1053_FILEPLAYER_PIN_INT); // DREQ int
 
-  //if (SD.begin(_cardCS))
-  //{
-    //printDirectory("/", 0);
- // }
+  // Now set up two tasks to run independently.
+  xTaskCreatePinnedToCore(
+      feederTask, "feederTask" // A name just for humans
+      ,
+      2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,
+      NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,
+      NULL, 0);
 
- 
-
-  // dumpRegs();
-  // Serial.print("Version = "); Serial.println(v);
   return (v == 4);
 }
 
@@ -106,10 +111,11 @@ void SoundPlayer::stop(void)
 {
   // wrap it up!
   playingMusic = false;
-    delay(500);
 
-  while(feedLock)
-    delay(5);
+  delay(1000);
+
+  if(currentTrack)
+    currentTrack.close();
 
   // cancel all playback
   sciWrite(VS1053_REG_MODE, VS1053_MODE_SM_LINE1 | VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
@@ -195,9 +201,8 @@ boolean SoundPlayer::play(const char *trackname)
   sciWrite(VS1053_REG_WRAM, 0);
 
   delay(5);
-  
-  superStream.clear();
-  File currentTrack = SD.open(trackname);
+
+  currentTrack = SD.open(trackname);
 
   if (!currentTrack)
   {
@@ -215,67 +220,40 @@ boolean SoundPlayer::play(const char *trackname)
   sciWrite(VS1053_REG_DECODETIME, 0x00);
   sciWrite(VS1053_REG_DECODETIME, 0x00);
 
-
-  while (currentTrack.available() > 0 && superStream.availableForWriteLarge() >= VS1053_DATABUFFERLEN)
-  {
-    size_t count = currentTrack.read(mp3buffer, VS1053_DATABUFFERLEN);
-
-    for (size_t index = 0; index < count; index++)
-    {
-      superStream.write(mp3buffer[index]);
-    }
-  }
-
-  currentTrack.close();
-
   playingMusic = true;
-
-  // fill it up!
-  feedBuffer();
 
   return true;
 }
 
-void SoundPlayer::feedBuffer(void)
+void SoundPlayer::feedBuffer()
 {
-  if(feedLock)
-    return;
-  
-  feedLock = true;
-
   if (!playingMusic)
   {
-    feedLock = false;
-    return; 
+    return;
   }
 
   // Feed the hungry buffer! :)
   while (readyForData() && playingMusic)
   {
-    int bytesread = 0;
+    size_t bytesRead = 0;
 
-    while (superStream.availableLarge() > 0 && bytesread < VS1053_DATABUFFERLEN)
+    bytesRead = currentTrack.readBytes((char *)mp3buffer, VS1053_DATABUFFERLEN);
+
+    if (bytesRead > 0)
     {
-      mp3buffer[bytesread] = superStream.read();
-      bytesread++;
+      playData(mp3buffer, bytesRead);
     }
-
-    if (bytesread == 0)
+    else
     {
-      // must be at the end of the file, wrap it up!
       playingMusic = false;
-      break;
+      currentTrack.close();
     }
-
-    playData(mp3buffer, bytesread);
   }
-
-  feedLock = false;
 }
 
 void SoundPlayer::report(JsonDocument &jsonDocument)
 {
-    auto o = jsonDocument["files"];
+  auto o = jsonDocument["files"];
 }
 
 void SoundPlayer::printDirectory(const char *path, int numTabs)
@@ -317,6 +295,4 @@ void SoundPlayer::printDirectory(File dir, int numTabs)
     }
     entry.close();
   }
-
- 
 }

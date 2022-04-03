@@ -42,6 +42,7 @@ SoundPlayer soundPlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, CARDCS
 
 BluetoothSerial serialBT;
 
+
 void setup()
 {
 
@@ -51,6 +52,7 @@ void setup()
   Settings.being();
   devices.begin();
 
+  
   if (!serialBT.begin(btDeviceName))
   {
     Log.errorln(F("Couldn't initialize Bluetooth"));
@@ -70,9 +72,9 @@ void setup()
     Log.errorln(F("Couldn't initialize SD card"));
   }
 
-  delay(9000);
+
   
-  WifiHandler.connect();
+ // WifiHandler.connect();
 
   // Blink Task
   blinkTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &blinkTick);
@@ -98,11 +100,7 @@ void setup()
   scheduler.addTask(batteryTask);
   batteryTask.enable();
 
-  Log.infoln("Total heap: %d", ESP.getHeapSize());
-  Log.infoln("Free heap: %d", ESP.getFreeHeap());
-  Log.infoln("Total PSRAM: %d", ESP.getPsramSize());
-  Log.infoln("Free PSRAM: %d", ESP.getFreePsram());
-  Log.infoln("Flash chip size: %d",ESP.getFlashChipSize());
+
 }
 
 void loop()
@@ -183,7 +181,7 @@ void protocolLedCallback(uint8_t ledNumber, bool turnOn)
 void protocolReportCallback()
 {
   Log.traceln(F("Got protocol callback for reports"));
-  DynamicJsonDocument jsonDocument(550);
+  DynamicJsonDocument jsonDocument(200);
 
   Settings.report(jsonDocument);
   WifiHandler.report(jsonDocument);

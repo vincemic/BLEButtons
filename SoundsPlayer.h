@@ -28,5 +28,5 @@ void report(JsonDocument &jsonDocument);
 
 private:
   uint8_t _cardCS;
-  volatile bool feedLock = false;
+  File currentTrack;
 };

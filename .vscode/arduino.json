@@ -3,5 +3,5 @@
     "board": "esp32:esp32:featheresp32",
     "sketch": "BLEButtons.ino",
     "port": "COM5",
-    "output": "../build"
+    "output": "../build1"
 }
