@@ -1,6 +1,9 @@
 #include "WifiHandler.h"
 #include <WiFi.h>
-#include "settings.h"
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <SD.h>
+#include "SettingHandler.h"
 #include "ArduinoLog.h"
 
 WifiHandlerClass::WifiHandlerClass()
@@ -13,8 +16,8 @@ bool WifiHandlerClass::connect()
     String password;
     wl_status_t status = WL_NO_SHIELD;
 
-    Settings.readWiFiSID(sid);
-    Settings.readWiFiPassword(password);
+    SettingHandler.readWiFiSID(sid);
+    SettingHandler.readWiFiPassword(password);
 
     disconnect();
 
@@ -22,7 +25,8 @@ bool WifiHandlerClass::connect()
 
     status = WiFi.begin(sid.c_str(), password.c_str());
 
-    while(status != WL_CONNECTED && status != WL_CONNECT_FAILED) {
+    while (status != WL_CONNECTED && status != WL_CONNECT_FAILED)
+    {
         delay(500);
         status = WiFi.status();
     }
@@ -72,4 +76,51 @@ void WifiHandlerClass::report(JsonDocument &jsonDocument)
     }
 }
 
+void WifiHandlerClass::getFile(const char *filepath)
+{
+    WiFiClientSecure wifiClient;
+    wifiClient.setInsecure();
+    HTTPClient https;
+    String path = String(F("https://bitdogttsbucket.s3.amazonaws.com"));
+
+    path.concat(filepath);
+
+    Log.traceln(F("[HTTPS] begin..."));
+    if (https.begin(wifiClient,path))
+    {
+        // HTTPS
+        Log.traceln(F("[HTTPS] GET..."));
+        // start connection and send HTTP header
+        int httpCode = https.GET();
+
+        // httpCode will be negative on error
+        if (httpCode > 0)
+        {
+            // HTTP header has been send and Server response header has been handled
+            Log.traceln(F("[HTTPS] GET... code: %d"), httpCode);
+
+            // file found at server
+            if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
+            {
+                Log.traceln(F("[HTTPS] Saving to file: %s"), filepath);
+                File file = SD.open(filepath, "w");
+
+                if (file)
+                    https.writeToStream(&file);
+                else
+                    Log.traceln(F("[HTTPS] Could not open SD file: %s"), filepath);
+            }
+        }
+        else
+        {
+            Log.errorln(F("[HTTPS] GET... failed, error: %s"), https.errorToString(httpCode).c_str());
+        }
+
+        https.end();
+    }
+    else
+    {
+        Log.errorln(F("[HTTPS] Unable to create client"));
+    }
+}
 WifiHandlerClass WifiHandler;

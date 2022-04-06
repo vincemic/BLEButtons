@@ -1,7 +1,6 @@
 #include <ArduinoLog.h>
-#include "Settings.h"
+#include "SettingHandler.h"
 #include "FileSystem.h"
-#include "ArduinoJson.h"
 #include "FileSystem.h"
 #include "LoopbackStream.h"
 #include "JsonHelper.h"
@@ -11,36 +10,37 @@
 #define SETTINGSPATH "/settings.json"
 #define MAXSETTINGSIZE 1000
 
-SettingsClass::SettingsClass()
+SettingHandlerClass::SettingHandlerClass()
 {
 }
 
-void SettingsClass::being()
+void SettingHandlerClass::being()
 {
+    Log.traceln(F("[Settings] Starting file system on SPIFFS"));
     FileSystem.begin();
 }
 
-void SettingsClass::clear()
+void SettingHandlerClass::clear()
 {
     FileSystem.deleteFile(SETTINGSPATH);
 }
 
-void SettingsClass::save(DynamicJsonDocument &jsonDocument)
+void SettingHandlerClass::save(DynamicJsonDocument &jsonDocument)
 {
     String json;
     serializeJson(jsonDocument, json);
-    Log.traceln(F("Saving settings file\r%s"), json.c_str());
+    Log.traceln(F("[Settings] Saving settings file\r%s"), json.c_str());
     FileSystem.writeFile(SETTINGSPATH, json.c_str());
 }
 
-bool SettingsClass::load(DynamicJsonDocument &jsonDocument)
+bool SettingHandlerClass::load(DynamicJsonDocument &jsonDocument)
 {
     char buffer[MAXSETTINGSIZE];
     size_t fileSize = FileSystem.readFile(SETTINGSPATH, buffer, MAXSETTINGSIZE - 1);
 
     if (fileSize <= 0)
     {
-        Log.errorln(F("Cannot open settings file: %s"), SETTINGSPATH);
+        Log.errorln(F("[Settings] Cannot open settings file: %s"), SETTINGSPATH);
         return false;
     }
 
@@ -48,17 +48,17 @@ bool SettingsClass::load(DynamicJsonDocument &jsonDocument)
 
     if (error)
     {
-        Log.errorln(F("Settings deserializeJson() failed: %s"), error.f_str());
+        Log.errorln(F("[Settings] Settings deserializeJson() failed: %s"), error.f_str());
         return false;
     }
 
     String json;
     serializeJson(jsonDocument, json);
-    Log.traceln(F("Settings file loaded: %s"), json.c_str());
+    Log.traceln(F("[Settings] Settings file loaded: %s"), json.c_str());
     return true;
 }
 
-void SettingsClass::writeWiFiSID(const char *name)
+void SettingHandlerClass::writeWiFiSID(const char *name)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
@@ -66,7 +66,7 @@ void SettingsClass::writeWiFiSID(const char *name)
     save(jsonDocument);
 }
 
-void SettingsClass::writeWiFiPassword(const char *password)
+void SettingHandlerClass::writeWiFiPassword(const char *password)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
@@ -74,21 +74,21 @@ void SettingsClass::writeWiFiPassword(const char *password)
     save(jsonDocument);
 }
 
-void SettingsClass::readWiFiSID(String &wifiSID)
+void SettingHandlerClass::readWiFiSID(String &wifiSID)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
     wifiSID.concat(jsonDocument[WIFISID].as<const char *>());
 }
 
-void SettingsClass::readWiFiPassword(String &password)
+void SettingHandlerClass::readWiFiPassword(String &password)
 {
     DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
     password.concat(jsonDocument[WIFIPASSWORD].as<const char *>());
 }
 
-void SettingsClass::report(JsonDocument &jsonDocument)
+void SettingHandlerClass::report(JsonDocument &jsonDocument)
 {
     DynamicJsonDocument settingsJsonDocument(MAXSETTINGSIZE);
     load(settingsJsonDocument);
@@ -96,4 +96,4 @@ void SettingsClass::report(JsonDocument &jsonDocument)
     JsonMerge(jsonDocument, settingsJsonDocument,"settings");
 }
 
-SettingsClass Settings;
+SettingHandlerClass SettingHandler;

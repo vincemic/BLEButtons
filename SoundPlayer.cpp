@@ -206,6 +206,7 @@ boolean SoundPlayer::play(const char *trackname)
 
   if (!currentTrack)
   {
+    Log.errorln(F("[SoundPlayer] Could not open SD file"), trackname);
     return false;
   }
 

@@ -4,7 +4,7 @@
 
 ESPBattery::ESPBattery(CallbackFunction stateChangedCallback)
 {
-  pin = A13;
+  pin = A12;
   min_level = ESPBATTERY_CRITICAL;
   max_level = ESPBATTERY_FULL;
   changed_cb = stateChangedCallback;

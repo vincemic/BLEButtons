@@ -5,7 +5,7 @@
 #define DEFAULT_I2C_ADDR 0x3A
 typedef void (*ButtonChangeCallback)(uint8_t, bool);
 
-class Devices
+class DeviceHandlerClass
 {
 
 private:
@@ -19,10 +19,12 @@ private:
     bool startSeesaw();
 
 public:
-    Devices(ButtonChangeCallback buttonChangeCallback);
+    DeviceHandlerClass();
     void tick();
-    void begin();
+    void begin(ButtonChangeCallback buttonChangeCallback);
     void turnOnLED(uint8_t number);
     void turnOffLED(uint8_t number);
 
 };
+
+extern DeviceHandlerClass DeviceHandler;

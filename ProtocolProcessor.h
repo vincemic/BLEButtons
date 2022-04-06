@@ -1,5 +1,4 @@
 #pragma once
-#include <BluetoothSerial.h>
 #include <ArduinoJson.h>
 #include "LoopbackStream.h"
 
@@ -27,7 +26,6 @@ private:
     uint8_t markerCount = 0;
     LoopbackStream protocolStream;
     DynamicJsonDocument jsonDocument;
-    BluetoothSerial *serialBT;
     ProtocolLedCallback ledCallback;
     ProtocolReportCallbback reportCallback;
     ProtocolPlayCallbback playCallback;
@@ -39,7 +37,7 @@ private:
 
 public:
     ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback);
-    void begin(BluetoothSerial *serialBT);
+    void begin();
     void tick();
 
     void sendStatus(const char *type, const char *status, uint8_t number, bool isAck = false);

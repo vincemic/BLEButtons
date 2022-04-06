@@ -1,6 +1,6 @@
 #include "ProtocolProcessor.h"
 #include <ArduinoLog.h>
-#include "Settings.h"
+#include "SettingHandler.h"
 #define COMMAND_COUNT 6
 
 ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback)
@@ -28,17 +28,19 @@ ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolRe
                         { ExecutePlayCommand(); })
     };
 }
-void ProtocolProcessor::begin(BluetoothSerial *serialBT)
+void ProtocolProcessor::begin()
 {
-    this->serialBT = serialBT;
+    
 }
 
 void ProtocolProcessor::tick()
 {
+    /*
     while (serialBT->available())
     {
         process(serialBT->read());
     }
+    */
 }
 
 void ProtocolProcessor::process(uint8_t character)
@@ -138,7 +140,7 @@ void ProtocolProcessor::send(JsonDocument &jsonDocument)
 
     for (size_t i = 0; i < length; i++)
     {
-        serialBT->write(buffer[i]);
+        //serialBT->write(buffer[i]);
     }
 }
 
@@ -176,19 +178,19 @@ void ProtocolProcessor::ExecuteLedCommand()
 void ProtocolProcessor::ExecuteSetWiFiSIDCommand()
 {
     const char *sidName = jsonDocument["sid"];
-    Settings.writeWiFiSID(sidName);
+    SettingHandler.writeWiFiSID(sidName);
 }
 
 void ProtocolProcessor::ExecuteSetWiFiPasswordCommand()
 {
 
     const char *password = jsonDocument["password"];
-    Settings.writeWiFiPassword(password);
+    SettingHandler.writeWiFiPassword(password);
 }
 
 void ProtocolProcessor::ExecuteClearSettingsCommand()
 {
-    Settings.clear();
+    SettingHandler.clear();
 }
 
 void ProtocolProcessor::ExecuteReportCommand()

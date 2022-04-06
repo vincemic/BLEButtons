@@ -1,4 +1,4 @@
-#include "Devices.h"
+#include "DeviceHandler.h"
 #include <ArduinoLog.h>
 
 struct button
@@ -27,18 +27,19 @@ struct led
 };
 led leds[] = {{0, 12}, {1, 13}, {2, 0}, {3, 1}};
 
-Devices::Devices(ButtonChangeCallback buttonChangeCallback)
+DeviceHandlerClass::DeviceHandlerClass()
 {
-    this->buttonChangeCallback = buttonChangeCallback;
+    
 }
 
-void Devices::begin()
+void DeviceHandlerClass::begin(ButtonChangeCallback buttonChangeCallback)
 {
 
+    this->buttonChangeCallback = buttonChangeCallback;
     startSeesaw();
 }
 
-void Devices::tick()
+void DeviceHandlerClass::tick()
 {
     if (seesawReady)
     {
@@ -75,7 +76,7 @@ void Devices::tick()
     }
 }
 
-bool Devices::startSeesaw()
+bool DeviceHandlerClass::startSeesaw()
 {
     if (!seesaw.begin(DEFAULT_I2C_ADDR))
     {
@@ -105,7 +106,7 @@ bool Devices::startSeesaw()
 
             for (led l : leds)
             {
-                seesaw.analogWrite(l.pin, 0);
+                seesaw.analogWrite(l.pin, 127);
             }
 
             seesawReady = true;
@@ -115,15 +116,17 @@ bool Devices::startSeesaw()
     return seesawReady;
 }
 
-void Devices::turnOnLED(uint8_t number)
+void DeviceHandlerClass::turnOnLED(uint8_t number)
 {
     uint8_t index = number - 1;
     if (index >= 0 && number < sizeof(leds) && seesawReady)
         seesaw.analogWrite(leds[index].pin, 127);
 }
-void Devices::turnOffLED(uint8_t number)
+void DeviceHandlerClass::turnOffLED(uint8_t number)
 {
     uint8_t index = number - 1;
     if (index >= 0 && number < sizeof(leds) && seesawReady)
         seesaw.analogWrite(leds[index].pin, 0);
 }
+
+DeviceHandlerClass DeviceHandler;

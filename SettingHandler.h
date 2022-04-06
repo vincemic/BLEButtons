@@ -1,7 +1,7 @@
 #pragma once
 #include <ArduinoJson.h>
 
-class SettingsClass
+class SettingHandlerClass
 {
 
 private:
@@ -9,7 +9,7 @@ private:
     bool load(DynamicJsonDocument &jsonDocument);
 
 public:
-    SettingsClass();
+    SettingHandlerClass();
     void being();
 
     void writeWiFiSID(const char *name);
@@ -20,4 +20,4 @@ public:
     void report(JsonDocument &jsonDocument);
 };
 
-extern SettingsClass Settings;
+extern SettingHandlerClass SettingHandler;

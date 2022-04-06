@@ -9,6 +9,7 @@ public:
     void disconnect();
     void tick();
     void report(JsonDocument &jsonDocument);
+    void getFile(const char *filepath);
 };
 
 extern WifiHandlerClass WifiHandler;
