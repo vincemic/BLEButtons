@@ -3,7 +3,7 @@
 #include "FileSystem.h"
 #include "FileSystem.h"
 #include "LoopbackStream.h"
-#include "JsonHelper.h"
+
 
 #define WIFISID "wifisid"
 #define WIFIPASSWORD "wifipassword"
@@ -25,7 +25,7 @@ void SettingHandlerClass::clear()
     FileSystem.deleteFile(SETTINGSPATH);
 }
 
-void SettingHandlerClass::save(DynamicJsonDocument &jsonDocument)
+void SettingHandlerClass::save(SpiRamJsonDocument &jsonDocument)
 {
     String json;
     serializeJson(jsonDocument, json);
@@ -33,7 +33,7 @@ void SettingHandlerClass::save(DynamicJsonDocument &jsonDocument)
     FileSystem.writeFile(SETTINGSPATH, json.c_str());
 }
 
-bool SettingHandlerClass::load(DynamicJsonDocument &jsonDocument)
+bool SettingHandlerClass::load(SpiRamJsonDocument &jsonDocument)
 {
     char buffer[MAXSETTINGSIZE];
     size_t fileSize = FileSystem.readFile(SETTINGSPATH, buffer, MAXSETTINGSIZE - 1);
@@ -60,7 +60,7 @@ bool SettingHandlerClass::load(DynamicJsonDocument &jsonDocument)
 
 void SettingHandlerClass::writeWiFiSID(const char *name)
 {
-    DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
+    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
     jsonDocument[WIFISID] = name;
     save(jsonDocument);
@@ -68,7 +68,7 @@ void SettingHandlerClass::writeWiFiSID(const char *name)
 
 void SettingHandlerClass::writeWiFiPassword(const char *password)
 {
-    DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
+    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
     jsonDocument[WIFIPASSWORD] = password;
     save(jsonDocument);
@@ -76,24 +76,24 @@ void SettingHandlerClass::writeWiFiPassword(const char *password)
 
 void SettingHandlerClass::readWiFiSID(String &wifiSID)
 {
-    DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
+    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
     wifiSID.concat(jsonDocument[WIFISID].as<const char *>());
 }
 
 void SettingHandlerClass::readWiFiPassword(String &password)
 {
-    DynamicJsonDocument jsonDocument(MAXSETTINGSIZE);
+    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
     load(jsonDocument);
     password.concat(jsonDocument[WIFIPASSWORD].as<const char *>());
 }
 
 void SettingHandlerClass::report(JsonDocument &jsonDocument)
 {
-    DynamicJsonDocument settingsJsonDocument(MAXSETTINGSIZE);
+    SpiRamJsonDocument settingsJsonDocument(MAXSETTINGSIZE);
     load(settingsJsonDocument);
 
-    JsonMerge(jsonDocument, settingsJsonDocument,"settings");
+    jsonMerge(jsonDocument, settingsJsonDocument,"settings");
 }
 
 SettingHandlerClass SettingHandler;

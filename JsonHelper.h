@@ -1,19 +1,30 @@
 #pragma once
 #include <ArduinoJson.h>
+#include <ArduinoLog.h>
 
-void JsonMerge(JsonDocument &destJsonDocument, const JsonDocument &srcJsonDocument, String elementName)
+void jsonMerge(JsonDocument &destJsonDocument, const JsonDocument &srcJsonDocument, String elementName);
+
+struct SpiRamAllocator
 {
-    String sourceJson;
-    serializeJson(srcJsonDocument, sourceJson);
-
-    if (sourceJson.length() > 0)
+    void *allocate(size_t size)
     {
-        destJsonDocument[elementName.c_str()] = "$$$PLACEHOLDER";
-        String destinationJson;
-        serializeJson(destJsonDocument, destinationJson);
+        void *heap = malloc(size);
+        
+        if (heap == NULL)
+            Log.errorln(F("JsonHelper] Failed to allocate SPIRAM"));
 
-        destinationJson.replace(F("\"$$$PLACEHOLDER\""), sourceJson);
-
-        deserializeJson(destJsonDocument, destinationJson);
+        return heap;
     }
-}
+
+    void deallocate(void *pointer)
+    {
+        free(pointer);
+    }
+
+    void *reallocate(void *ptr, size_t new_size)
+    {
+        return realloc(ptr, new_size);
+    }
+};
+
+using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;

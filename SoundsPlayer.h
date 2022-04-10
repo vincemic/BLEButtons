@@ -24,7 +24,7 @@ public:
 
   void printDirectory(const char *path, int numTabs);
   void printDirectory(File dir, int numTabs);
-void report(JsonDocument &jsonDocument);
+  void report(JsonDocument &jsonDocument);
 
 private:
   uint8_t _cardCS;

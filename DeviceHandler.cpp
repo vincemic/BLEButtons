@@ -29,13 +29,22 @@ led leds[] = {{0, 12}, {1, 13}, {2, 0}, {3, 1}};
 
 DeviceHandlerClass::DeviceHandlerClass()
 {
-    
 }
 
 void DeviceHandlerClass::begin(ButtonChangeCallback buttonChangeCallback)
 {
-
     this->buttonChangeCallback = buttonChangeCallback;
+
+    // Turn off LDO2 to cut power to seesaw to reset
+    pinMode(LDO2, OUTPUT);
+    digitalWrite(LDO2, 0);
+    delay(2000);
+
+    // Turn on LDO2 to give seesaw power
+    digitalWrite(LDO2, 255);
+    delay(2000);
+
+    // Starter up
     startSeesaw();
 }
 

@@ -4,13 +4,12 @@
 #include <SD.h>
 #include <TaskScheduler.h>
 
-
 #include "DeviceHandler.h"
 #include "BlinkerHandler.h"
 #include "ProtocolProcessor.h"
 #include "SettingHandler.h"
 #include "WifiHandler.h"
-#include "ESPBattery.h"
+#include "BatteryHandler.h"
 #include "SoundsPlayer.h"
 #include "BLEHandler.h"
 
@@ -24,11 +23,11 @@
 Scheduler scheduler;
 Task blinkTask;
 Task devicesTask;
-Task protocolTask;
 Task wifiTask;
 Task batteryTask;
+Task bleTask;
 
-// ProtocolProcessor protocolProcessor(&protocolLedCallback, &protocolReportCallback, &protocolPlayCallback);
+ProtocolProcessor protocolProcessor(&protocolLedCallback, &protocolReportCallback, NULL /* &protocolPlayCallback */);
 // ESPBattery battery(&batteryCallback);
 // SoundPlayer soundPlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, CARDCS);
 
@@ -44,10 +43,9 @@ void setup()
   BlinkerHandler.begin();
   SettingHandler.being();
   DeviceHandler.begin(&deviceButtonCallback);
-  BLEHandler.begin();
+  BLEHandler.begin(&receivedMessageCallback);
 
-  // protocolProcessor.begin(&serialBT);
-  //  Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), btDeviceName);
+  Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), BLEHandler.btDeviceName);
 
   //  if (!soundPlayer.begin())
   //  {
@@ -67,42 +65,30 @@ void setup()
   scheduler.addTask(blinkTask);
   blinkTask.enable();
 
-  // Devices Task
-  // devicesTask.set(TASK_MILLISECOND * 40, TASK_FOREVER, &devicesTick);
-  // scheduler.addTask(devicesTask);
-  // devicesTask.enable();
+  // BLE Task
+  bleTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &bleTick);
+  scheduler.addTask(bleTask);
+  bleTask.enable();
 
-  // Protocol Task
-  // protocolTask.set(TASK_MILLISECOND * 40, TASK_FOREVER, &protocolTick);
-  // scheduler.addTask(protocolTask);
-  // protocolTask.enable();
+  // Devices Task
+  devicesTask.set(TASK_MILLISECOND * 40, TASK_FOREVER, &devicesTick);
+  scheduler.addTask(devicesTask);
+  devicesTask.enable();
 
   // WiFi Task
-  // wifiTask.set(TASK_MILLISECOND * 60000 * 5, TASK_FOREVER, &wifiTick);
-  // scheduler.addTask(wifiTask);
-  // wifiTask.enable();
+  wifiTask.set(TASK_MILLISECOND * 60000 * 5, TASK_FOREVER, &wifiTick);
+  scheduler.addTask(wifiTask);
+  wifiTask.enable();
 
-  // batteryTask.set(TASK_MILLISECOND * 60000 * 2, TASK_FOREVER, &batteryTick);
-  // scheduler.addTask(batteryTask);
-  // batteryTask.enable();
+  // Battery Task
+  batteryTask.set(TASK_MILLISECOND * 60000 * 2, TASK_FOREVER, &batteryTick);
+  scheduler.addTask(batteryTask);
+  batteryTask.enable();
 }
 
 void loop()
 {
   scheduler.execute();
-}
-
-void btWriteMessage(String *message)
-{
-  // serialBT.write((const uint8_t *)message->c_str(), message->length());
-  // serialBT.write('\n');
-}
-
-void btWriteButtonMessage(int number)
-{
-  // serialBT.write('b');
-  // serialBT.write('0' + number);
-  // serialBT.write('\n');
 }
 
 void blinkTick()
@@ -115,11 +101,6 @@ void devicesTick()
   DeviceHandler.tick();
 }
 
-void protocolTick()
-{
-  // protocolProcessor.tick();
-}
-
 void wifiTick()
 {
   WifiHandler.tick();
@@ -127,7 +108,13 @@ void wifiTick()
 
 void batteryTick()
 {
-  // battery.tick();
+  BatteryHandler.tick();
+  protocolReportCallback();
+}
+
+void bleTick()
+{
+  BLEHandler.tick();
 }
 
 void deviceButtonCallback(uint8_t buttonNumber, bool isOn)
@@ -135,15 +122,15 @@ void deviceButtonCallback(uint8_t buttonNumber, bool isOn)
   Log.traceln(F("Got button callback for button %d"), buttonNumber);
   if (isOn)
   {
-    // protocolProcessor.sendStatus("button", "on", buttonNumber);
+    protocolProcessor.sendStatus("button", "on", buttonNumber);
     DeviceHandler.turnOnLED(buttonNumber);
-    // protocolProcessor.sendStatus("led", "on", buttonNumber);
+    protocolProcessor.sendStatus("led", "on", buttonNumber);
   }
   else
   {
-    // protocolProcessor.sendStatus("button", "off", buttonNumber);
+    protocolProcessor.sendStatus("button", "off", buttonNumber);
     DeviceHandler.turnOffLED(buttonNumber);
-    // protocolProcessor.sendStatus("led", "off", buttonNumber);
+    protocolProcessor.sendStatus("led", "off", buttonNumber);
   }
 }
 
@@ -153,23 +140,23 @@ void protocolLedCallback(uint8_t ledNumber, bool turnOn)
   if (turnOn)
   {
     DeviceHandler.turnOnLED(ledNumber);
-    // protocolProcessor.sendStatus("led", "on", ledNumber, true);
+    protocolProcessor.sendStatus("led", "on", ledNumber, true);
   }
   else
   {
     DeviceHandler.turnOffLED(ledNumber);
-    // protocolProcessor.sendStatus("led", "off", ledNumber, true);
+    protocolProcessor.sendStatus("led", "off", ledNumber, true);
   }
 }
 
 void protocolReportCallback()
 {
   Log.traceln(F("Got protocol callback for reports"));
-  DynamicJsonDocument jsonDocument(500);
+  SpiRamJsonDocument jsonDocument(500);
 
   SettingHandler.report(jsonDocument);
   WifiHandler.report(jsonDocument);
-  // battery.report(jsonDocument);
+  BatteryHandler.report(jsonDocument);
 
   jsonDocument[F("memory")][F("totaheap")] = ESP.getHeapSize();
   jsonDocument[F("memory")][F("freeheap")] = ESP.getFreeHeap();
@@ -177,24 +164,24 @@ void protocolReportCallback()
   jsonDocument[F("memory")][F("freepsram")] = ESP.getFreePsram();
   jsonDocument[F("memory")][F("flashchipsize")] = ESP.getFlashChipSize();
 
-  // protocolProcessor.send(jsonDocument);
+  protocolProcessor.send(jsonDocument);
 }
 
-void batteryCallback(ESPBattery &b)
+void batteryCallback()
 {
-  int state = b.getState();
-  int level = b.getLevel();
-  float voltage = b.getVoltage();
+  Log.traceln(F("Current state: %s"), BatteryHandler.stateToString(BatteryHandler.getState()));
+  Log.traceln(F("Current level: %d "), BatteryHandler.getLevel());
 
-  Log.traceln(F("Current state: $s"), b.stateToString(state));
-  Log.traceln(F("Current level: %d "), level);
-
-  Log.traceln(F("Current voltage: %f"), voltage);
+  Log.traceln(F("Current voltage: %f"), BatteryHandler.getVoltage());
 }
 
 void protocolPlayCallback(const char *filename)
 {
   Log.traceln(F("Play: %s"), filename);
   // soundPlayer.play(filename);
-  // protocolProcessor.sendStatus("sound", "play", filename, true);
+  protocolProcessor.sendStatus("sound", "play", filename, true);
+}
+void receivedMessageCallback(const char* message, size_t size)
+{
+  protocolProcessor.process(message,size);
 }

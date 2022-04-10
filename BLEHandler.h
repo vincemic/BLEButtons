@@ -11,23 +11,62 @@
 #define BLE_CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define BLE_CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
+typedef void (*ReceivedMessageCallbback)(const char *messge, size_t size);
 
 class BLEHandlerClass
 {
+  friend class HandlerServerCallbacks;
+  friend class HandlerCharacteristicCallbacks;
+
 public:
   BLEHandlerClass();
-  void begin();
+  void begin(ReceivedMessageCallbback receivedMessageCallbback);
   void tick();
-  void update(bool);
+  bool isConnected();
+  void send(const char *message);
+  const char *btDeviceName = "BLEButtons";
+  volatile RingbufHandle_t ringBuffer;
+  volatile boolean _dREQFlag = false;
+  ReceivedMessageCallbback receivedMessageCallbback;
 
 private:
-  const char *btDeviceName = "BLEButtons";
+  void setConnected(bool);
+  IRAM_ATTR void receive(BLECharacteristic *pCharacteristic);
+
+  uint32_t count = 0;
+
   BLEServer *pServer = NULL;
   BLECharacteristic *pTxCharacteristic;
+  BLECharacteristic *pRxCharacteristic;
   bool connected = false;
   uint8_t txValue = 0;
+
 };
 
 extern BLEHandlerClass BLEHandler;
 
+class HandlerServerCallbacks : public BLEServerCallbacks
+{
 
+public:
+  void onConnect(BLEServer *pServer)
+  {
+    BLEHandler.setConnected(true);
+    Log.infoln(F("[BLEHandler] Device connected"));
+  }
+
+  void onDisconnect(BLEServer *pServer)
+  {
+    Log.infoln(F("[BLEHandler] Device disconnected"));
+    delay(500);
+    BLEHandler.setConnected(false);
+  }
+};
+
+class HandlerCharacteristicCallbacks : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *pCharacteristic)
+  {
+    BLEHandler.receive(pCharacteristic);
+  }
+};

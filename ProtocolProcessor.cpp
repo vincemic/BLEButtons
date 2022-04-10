@@ -1,17 +1,18 @@
 #include "ProtocolProcessor.h"
 #include <ArduinoLog.h>
 #include "SettingHandler.h"
+#include "BLEHandler.h"
+
 #define COMMAND_COUNT 6
 
 ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback)
-    : jsonDocument(250),
-      protocolStream(250)
+    : jsonDocument(250)
 {
 
     this->ledCallback = ledCallback;
     this->reportCallback = reportCallback;
     this->playCallback = playCallback;
-    
+
     this->commands = new Command *[COMMAND_COUNT]
     {
         new Command("led", [this]()
@@ -28,49 +29,15 @@ ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolRe
                         { ExecutePlayCommand(); })
     };
 }
-void ProtocolProcessor::begin()
-{
-    
-}
 
-void ProtocolProcessor::tick()
-{
-    /*
-    while (serialBT->available())
-    {
-        process(serialBT->read());
-    }
-    */
-}
-
-void ProtocolProcessor::process(uint8_t character)
+void ProtocolProcessor::process(const char *message,size_t size)
 {
 
-    if (character < 0)
-        return;
-
-    protocolStream.write(character);
-
-    if (character == '\r')
-        markerCount++;
-    else
-        markerCount = 0;
-
-    if (markerCount >= 2)
-    {
-        processDocument();
-        markerCount = 0;
-    }
-}
-
-void ProtocolProcessor::processDocument()
-{
-    DeserializationError error = deserializeJson(jsonDocument, protocolStream);
-    protocolStream.clear();
+    DeserializationError error = deserializeJson(jsonDocument, message, size);
 
     if (error)
     {
-        Log.errorln(F("deserializeJson() failed: %s"), error.f_str());
+        Log.errorln(F("[Protocol Processor] deserializeJson() failed: %s"), error.f_str());
     }
     else
     {
@@ -109,9 +76,9 @@ void ProtocolProcessor::logJsonDocument()
 
 /////////////////////////////
 
-void ProtocolProcessor::sendStatus(const char *type, const char *status, uint8_t number, bool isAck )
+void ProtocolProcessor::sendStatus(const char *type, const char *status, uint8_t number, bool isAck)
 {
-    DynamicJsonDocument jsonDocument(100);
+    SpiRamJsonDocument jsonDocument(100);
     jsonDocument["type"] = type;
     jsonDocument["status"] = status;
     jsonDocument["number"] = number;
@@ -119,9 +86,9 @@ void ProtocolProcessor::sendStatus(const char *type, const char *status, uint8_t
     send(jsonDocument);
 }
 
-void ProtocolProcessor::sendStatus(const char *type, const char *status, const char *detail, bool isAck )
+void ProtocolProcessor::sendStatus(const char *type, const char *status, const char *detail, bool isAck)
 {
-    DynamicJsonDocument jsonDocument(100);
+    SpiRamJsonDocument jsonDocument(100);
     jsonDocument["type"] = type;
     jsonDocument["status"] = status;
     jsonDocument["detail"] = detail;
@@ -134,14 +101,8 @@ void ProtocolProcessor::send(JsonDocument &jsonDocument)
     String json;
     serializeJson(jsonDocument, json);
     json.concat("\r\r");
-
-    uint16_t length = json.length();
-    const char *buffer = json.c_str();
-
-    for (size_t i = 0; i < length; i++)
-    {
-        //serialBT->write(buffer[i]);
-    }
+    BLEHandler.send(json.c_str());
+    Log.traceln("%s", json.c_str());
 }
 
 //////////////////////////////

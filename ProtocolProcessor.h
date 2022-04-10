@@ -1,6 +1,7 @@
 #pragma once
 #include <ArduinoJson.h>
 #include "LoopbackStream.h"
+#include "JsonHelper.h"
 
 #define BUFFER_SIZE 500
 typedef void (*ProtocolLedCallback)(uint8_t, bool);
@@ -24,25 +25,21 @@ private:
     };
 
     uint8_t markerCount = 0;
-    LoopbackStream protocolStream;
-    DynamicJsonDocument jsonDocument;
+    SpiRamJsonDocument jsonDocument;
     ProtocolLedCallback ledCallback;
     ProtocolReportCallbback reportCallback;
     ProtocolPlayCallbback playCallback;
     Command **commands;
 
-    void process(uint8_t character);
-    void processDocument();
     void logJsonDocument();
 
 public:
     ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback);
-    void begin();
-    void tick();
 
     void sendStatus(const char *type, const char *status, uint8_t number, bool isAck = false);
     void sendStatus(const char *type, const char *status, const char *detail, bool isAck = false);
     void send(JsonDocument &jsonDocument);
+    void process(const char *message,size_t size);
 
     void ExecuteLedCommand();
     void ExecuteSetWiFiSIDCommand();

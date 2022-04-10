@@ -1,9 +1,9 @@
+#include <Arduino.h>
 #include "LoopbackStream.h"
-#include <esp32-hal-psram.h>
 
 LoopbackStream::LoopbackStream(size_t buffer_size)
 {
-  this->buffer = (uint8_t *) ps_malloc(buffer_size);
+  this->buffer = (uint8_t *) malloc(buffer_size);
   this->buffer_size = buffer_size;
   this->pos = 0;
   this->size = 0;

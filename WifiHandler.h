@@ -5,7 +5,7 @@ class WifiHandlerClass
 
 public:
     WifiHandlerClass();
-    bool connect();
+    void connect();
     void disconnect();
     void tick();
     void report(JsonDocument &jsonDocument);

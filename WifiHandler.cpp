@@ -10,7 +10,7 @@ WifiHandlerClass::WifiHandlerClass()
 {
 }
 
-bool WifiHandlerClass::connect()
+void WifiHandlerClass::connect()
 {
     String sid;
     String password;
@@ -25,13 +25,6 @@ bool WifiHandlerClass::connect()
 
     status = WiFi.begin(sid.c_str(), password.c_str());
 
-    while (status != WL_CONNECTED && status != WL_CONNECT_FAILED)
-    {
-        delay(500);
-        status = WiFi.status();
-    }
-
-    return status == WL_CONNECTED;
 }
 
 void WifiHandlerClass::disconnect()

@@ -1,12 +1,13 @@
 #pragma once
 #include <ArduinoJson.h>
+#include "JsonHelper.h"
 
 class SettingHandlerClass
 {
 
 private:
-    void save(DynamicJsonDocument &jsonDocument);
-    bool load(DynamicJsonDocument &jsonDocument);
+    void save(SpiRamJsonDocument &jsonDocument);
+    bool load(SpiRamJsonDocument &jsonDocument);
 
 public:
     SettingHandlerClass();

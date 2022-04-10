@@ -1,14 +1,5 @@
-/////////////////////////////////////////////////////////////////
-/*
-    Arduino Library to calculate the ESP8266 (Feather Huzzah) LiPo battery level.
-  Created by Lennart Hennigs, November 4, 2017.
-*/
-/////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#ifndef ESPBattery_h
-#define ESPBattery_h
 
 /////////////////////////////////////////////////////////////////
 
@@ -25,19 +16,18 @@
 
 /////////////////////////////////////////////////////////////////
 
-class ESPBattery
+class BatteryHandlerClass
 {
 private:
-  byte pin;
-  unsigned int level;
-  float voltage;
+  uint32_t batteryVoltage;
+  int vbusVoltage;
   int percentage;
   int min_level, max_level;
   int state, last_state;
 
   void readData();
 
-  typedef void (*CallbackFunction)(ESPBattery &);
+  typedef void (*CallbackFunction)();
 
   CallbackFunction changed_cb = NULL;
   CallbackFunction low_cb = NULL;
@@ -45,7 +35,7 @@ private:
   CallbackFunction charging_cb = NULL;
 
 public:
-  ESPBattery(CallbackFunction f);
+  BatteryHandlerClass();
 
   float getVoltage();
   int getPercentage();
@@ -54,17 +44,16 @@ public:
   int getPreviousState();
   String stateToString(int state);
 
-  void setLevelChangedHandler(CallbackFunction f);
-  void setLevelLowHandler(CallbackFunction f);
-  void setLevelCriticalHandler(CallbackFunction f);
-  void setLevelChargingHandler(CallbackFunction f);
+  void setLevelChangedHandler(CallbackFunction callbackFunction);
+  void setLevelLowHandler(CallbackFunction callbackFunctionf);
+  void setLevelCriticalHandler(CallbackFunction callbackFunction);
+  void setLevelChargingHandler(CallbackFunction callbackFunction);
+  void setStateChangedChargingHandler(CallbackFunction callbackFunction);
 
   void tick();
   void report(JsonDocument &jsonDocument);
 };
 
-/////////////////////////////////////////////////////////////////
-#endif
-/////////////////////////////////////////////////////////////////
+extern BatteryHandlerClass BatteryHandler;
 
 
