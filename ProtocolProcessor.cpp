@@ -6,7 +6,6 @@
 #define COMMAND_COUNT 6
 
 ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback)
-    : jsonDocument(250)
 {
 
     this->ledCallback = ledCallback;
@@ -15,25 +14,31 @@ ProtocolProcessor::ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolRe
 
     this->commands = new Command *[COMMAND_COUNT]
     {
-        new Command("led", [this]()
-                    { ExecuteLedCommand(); }),
-            new Command("wifisid", [this]()
-                        { ExecuteSetWiFiSIDCommand(); }),
-            new Command("wifipassword", [this]()
-                        { ExecuteSetWiFiPasswordCommand(); }),
-            new Command("clearsettings", [this]()
-                        { ExecuteClearSettingsCommand(); }),
-            new Command("report", [this]()
-                        { ExecuteReportCommand(); }),
-            new Command("play", [this]()
-                        { ExecutePlayCommand(); })
+        new Command("led", [this](SpiRamJsonDocument &jsonDocument)
+                    { ExecuteLedCommand(jsonDocument); }),
+            new Command("wifisid", [this](SpiRamJsonDocument &jsonDocument)
+                        { ExecuteSetWiFiSIDCommand(jsonDocument); }),
+            new Command("wifipassword", [this](SpiRamJsonDocument &jsonDocument)
+                        { ExecuteSetWiFiPasswordCommand(jsonDocument); }),
+            new Command("clearsettings", [this](SpiRamJsonDocument &jsonDocument)
+                        { ExecuteClearSettingsCommand(jsonDocument); }),
+            new Command("report", [this](SpiRamJsonDocument &jsonDocument)
+                        { ExecuteReportCommand(jsonDocument); }),
+            new Command("play", [this](SpiRamJsonDocument &jsonDocument)
+                        { ExecutePlayCommand(jsonDocument); })
     };
+}
+
+void ProtocolProcessor::begin() {
+    jsonDocument = new SpiRamJsonDocument(250);
 }
 
 void ProtocolProcessor::process(const char *message,size_t size)
 {
 
-    DeserializationError error = deserializeJson(jsonDocument, message, size);
+    Log.errorln(F("[Protocol Processor] got meesage size: %d"),size);
+
+    DeserializationError error = deserializeJson(*jsonDocument, message, size);
 
     if (error)
     {
@@ -42,24 +47,23 @@ void ProtocolProcessor::process(const char *message,size_t size)
     else
     {
 
-        logJsonDocument();
-        Log.traceln(F("message received"));
+        Log.traceln(F("[Protocol Processor] Message received"));
 
-        const char *commandName = jsonDocument["command"];
+        const char *commandName = (*jsonDocument)["command"];
 
         if (commandName == NULL)
         {
-            Log.traceln(F("command not found"));
+            Log.traceln(F("[Protocol Processor] Command not found"));
         }
         else
         {
-            Log.traceln(F("command found: %s"), commandName);
+            Log.traceln(F("[Protocol Processor] Command found: %s"), commandName);
 
             for (int index = 0; index < COMMAND_COUNT; index++)
             {
                 if (strcmp(commands[index]->name, commandName) == 0)
                 {
-                    commands[index]->commandFunction();
+                    commands[index]->commandFunction(*jsonDocument);
                     break;
                 }
             }
@@ -67,14 +71,6 @@ void ProtocolProcessor::process(const char *message,size_t size)
     }
 }
 
-void ProtocolProcessor::logJsonDocument()
-{
-    String json;
-    serializeJson(jsonDocument, json);
-    Log.traceln("%s", json.c_str());
-}
-
-/////////////////////////////
 
 void ProtocolProcessor::sendStatus(const char *type, const char *status, uint8_t number, bool isAck)
 {
@@ -107,7 +103,7 @@ void ProtocolProcessor::send(JsonDocument &jsonDocument)
 
 //////////////////////////////
 
-void ProtocolProcessor::ExecuteLedCommand()
+void ProtocolProcessor::ExecuteLedCommand(SpiRamJsonDocument &jsonDocument)
 {
 
     uint8_t on = jsonDocument["on"];
@@ -136,31 +132,31 @@ void ProtocolProcessor::ExecuteLedCommand()
         ledCallback(number, result);
 }
 
-void ProtocolProcessor::ExecuteSetWiFiSIDCommand()
+void ProtocolProcessor::ExecuteSetWiFiSIDCommand(SpiRamJsonDocument &jsonDocument)
 {
     const char *sidName = jsonDocument["sid"];
     SettingHandler.writeWiFiSID(sidName);
 }
 
-void ProtocolProcessor::ExecuteSetWiFiPasswordCommand()
+void ProtocolProcessor::ExecuteSetWiFiPasswordCommand(SpiRamJsonDocument &jsonDocument)
 {
 
     const char *password = jsonDocument["password"];
     SettingHandler.writeWiFiPassword(password);
 }
 
-void ProtocolProcessor::ExecuteClearSettingsCommand()
+void ProtocolProcessor::ExecuteClearSettingsCommand(SpiRamJsonDocument &jsonDocument)
 {
     SettingHandler.clear();
 }
 
-void ProtocolProcessor::ExecuteReportCommand()
+void ProtocolProcessor::ExecuteReportCommand(SpiRamJsonDocument &jsonDocument)
 {
     if (reportCallback != NULL)
         reportCallback();
 }
 
-void ProtocolProcessor::ExecutePlayCommand()
+void ProtocolProcessor::ExecutePlayCommand(SpiRamJsonDocument &jsonDocument)
 {
     const char *filename = jsonDocument["filename"];
     if (playCallback != NULL)

@@ -2,13 +2,13 @@
 #include <ArduinoJson.h>
 #include <ArduinoLog.h>
 
-void jsonMerge(JsonDocument &destJsonDocument, const JsonDocument &srcJsonDocument, String elementName);
+
 
 struct SpiRamAllocator
 {
     void *allocate(size_t size)
     {
-        void *heap = malloc(size);
+        void *heap = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
         
         if (heap == NULL)
             Log.errorln(F("JsonHelper] Failed to allocate SPIRAM"));
@@ -18,13 +18,15 @@ struct SpiRamAllocator
 
     void deallocate(void *pointer)
     {
-        free(pointer);
+        heap_caps_free(pointer);
     }
 
     void *reallocate(void *ptr, size_t new_size)
     {
-        return realloc(ptr, new_size);
+        return heap_caps_realloc(ptr, new_size, MALLOC_CAP_SPIRAM);
     }
 };
 
 using SpiRamJsonDocument = BasicJsonDocument<SpiRamAllocator>;
+
+void jsonMerge(SpiRamJsonDocument &destJsonDocument, const SpiRamJsonDocument &srcJsonDocument, String elementName);

@@ -18,7 +18,7 @@ public:
     void readWiFiSID(String &wifiSID);
     void readWiFiPassword(String &password);
     void clear();
-    void report(JsonDocument &jsonDocument);
+    void report(SpiRamJsonDocument &jsonDocument);
 };
 
 extern SettingHandlerClass SettingHandler;

@@ -36,10 +36,12 @@ void DeviceHandlerClass::begin(ButtonChangeCallback buttonChangeCallback)
     this->buttonChangeCallback = buttonChangeCallback;
 
     // Turn off LDO2 to cut power to seesaw to reset
+    Log.traceln(F("[DeviceHandler] Turning off LDO2 to reset I2C devices"));
     pinMode(LDO2, OUTPUT);
     digitalWrite(LDO2, 0);
     delay(2000);
 
+    Log.traceln(F("[DeviceHandler] Turning on LDO2"));
     // Turn on LDO2 to give seesaw power
     digitalWrite(LDO2, 255);
     delay(2000);
@@ -63,7 +65,7 @@ void DeviceHandlerClass::tick()
             {
                 if (!btn.debounce)
                 {
-                    Log.traceln(F("Button %d on"), btn.index + 1);
+                    Log.traceln(F("[DeviceHandler] Button %d on"), btn.index + 1);
                     btn.debounce = true;
 
                     if (buttonChangeCallback != NULL)
@@ -74,7 +76,7 @@ void DeviceHandlerClass::tick()
             {
                 if (btn.debounce)
                 {
-                    Log.traceln(F("Button %d off"), btn.index + 1);
+                    Log.traceln(F("[DeviceHandler] Button %d off"), btn.index + 1);
                     btn.debounce = false;
 
                     if (buttonChangeCallback != NULL)
@@ -89,24 +91,24 @@ bool DeviceHandlerClass::startSeesaw()
 {
     if (!seesaw.begin(DEFAULT_I2C_ADDR))
     {
-        Log.errorln(F("seesaw not found!"));
+        Log.errorln(F("[DeviceHandler] Seesaw not found!"));
         seesawReady = false;
     }
     else
     {
 
         seesaw.getProdDatecode(&pid, &year, &mon, &day);
-        Log.noticeln(F("seesaw found PID: %d datecode: %d/%d/%d"), pid, 2000 + year, mon, day);
+        Log.noticeln(F("[DeviceHandler] Seesaw found PID: %d datecode: %d/%d/%d"), pid, 2000 + year, mon, day);
 
         if (pid != 5296)
         {
-            Log.errorln(F("Wrong seesaw PID"));
+            Log.errorln(F("[DeviceHandler] Wrong seesaw PID"));
             seesawReady = false;
         }
         else
         {
 
-            Log.noticeln(F("seesaw started OK!"));
+            Log.noticeln(F("[DeviceHandler] Seesaw started OK!"));
 
             for (button btn : buttons)
             {

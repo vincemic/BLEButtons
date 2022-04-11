@@ -88,7 +88,7 @@ void SettingHandlerClass::readWiFiPassword(String &password)
     password.concat(jsonDocument[WIFIPASSWORD].as<const char *>());
 }
 
-void SettingHandlerClass::report(JsonDocument &jsonDocument)
+void SettingHandlerClass::report(SpiRamJsonDocument &jsonDocument)
 {
     SpiRamJsonDocument settingsJsonDocument(MAXSETTINGSIZE);
     load(settingsJsonDocument);

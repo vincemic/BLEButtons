@@ -1,5 +1,6 @@
 #pragma once
 #include <ArduinoJson.h>
+#include "JsonHelper.h"
 class WifiHandlerClass
 {
 
@@ -8,7 +9,7 @@ public:
     void connect();
     void disconnect();
     void tick();
-    void report(JsonDocument &jsonDocument);
+    void report(SpiRamJsonDocument &jsonDocument);
     void getFile(const char *filepath);
 };
 

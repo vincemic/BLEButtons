@@ -55,7 +55,7 @@ void WifiHandlerClass::tick()
     }
 }
 
-void WifiHandlerClass::report(JsonDocument &jsonDocument)
+void WifiHandlerClass::report(SpiRamJsonDocument &jsonDocument)
 {
 
     jsonDocument["wifi"]["status"] = WiFi.status();

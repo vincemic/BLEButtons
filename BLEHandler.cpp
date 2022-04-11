@@ -78,7 +78,7 @@ void BLEHandlerClass::begin(ReceivedMessageCallbback receivedMessageCallbback)
   xTaskCreatePinnedToCore(
       feederTask2, "feederTask2" // A name just for humans
       ,
-      1024 // This stack size can be checked & adjusted by reading the Stack Highwater
+      4096 // This stack size can be checked & adjusted by reading the Stack Highwater
       ,
       NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
       ,
@@ -128,7 +128,9 @@ void BLEHandlerClass::receive(BLECharacteristic *pCharacteristic)
 {
   BaseType_t woke;
   std::string value = pCharacteristic->getValue();
-  xRingbufferSendFromISR(ringBuffer, value.c_str(), value.length(), &woke);
+
+  // Copy string into ring buffer including the null terminator
+  xRingbufferSendFromISR(ringBuffer, value.c_str(), value.length() + 1, &woke);
   _dREQFlag = true;
 }
 

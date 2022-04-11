@@ -11,7 +11,7 @@ class ProtocolProcessor
 {
 
 private:
-    typedef std::function<void()> CommandFunction;
+    typedef std::function<void(SpiRamJsonDocument &jsonDocument)> CommandFunction;
     struct Command
     {
         CommandFunction commandFunction;
@@ -25,13 +25,11 @@ private:
     };
 
     uint8_t markerCount = 0;
-    SpiRamJsonDocument jsonDocument;
     ProtocolLedCallback ledCallback;
     ProtocolReportCallbback reportCallback;
     ProtocolPlayCallbback playCallback;
     Command **commands;
-
-    void logJsonDocument();
+    SpiRamJsonDocument  *jsonDocument;
 
 public:
     ProtocolProcessor(ProtocolLedCallback ledCallback, ProtocolReportCallbback reportCallback, ProtocolPlayCallbback playCallback);
@@ -40,11 +38,12 @@ public:
     void sendStatus(const char *type, const char *status, const char *detail, bool isAck = false);
     void send(JsonDocument &jsonDocument);
     void process(const char *message,size_t size);
+    void begin();
 
-    void ExecuteLedCommand();
-    void ExecuteSetWiFiSIDCommand();
-    void ExecuteSetWiFiPasswordCommand();
-    void ExecuteClearSettingsCommand();
-    void ExecuteReportCommand();
-    void ExecutePlayCommand();
+    void ExecuteLedCommand(SpiRamJsonDocument &jsonDocument);
+    void ExecuteSetWiFiSIDCommand(SpiRamJsonDocument &jsonDocument);
+    void ExecuteSetWiFiPasswordCommand(SpiRamJsonDocument &jsonDocument);
+    void ExecuteClearSettingsCommand(SpiRamJsonDocument &jsonDocument);
+    void ExecuteReportCommand(SpiRamJsonDocument &jsonDocument);
+    void ExecutePlayCommand(SpiRamJsonDocument &jsonDocument);
 };

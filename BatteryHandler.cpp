@@ -141,7 +141,7 @@ void BatteryHandlerClass::setStateChangedChargingHandler(CallbackFunction callba
   changed_cb = callbackFunction;
 }
 
-void BatteryHandlerClass::report(JsonDocument &jsonDocument)
+void BatteryHandlerClass::report(SpiRamJsonDocument &jsonDocument)
 {
   readData();
   jsonDocument["battery"]["state"] = stateToString(state);

@@ -1,7 +1,7 @@
 #include "JsonHelper.h"
 
 
-void jsonMerge(JsonDocument &destJsonDocument, const JsonDocument &srcJsonDocument, String elementName)
+void jsonMerge(SpiRamJsonDocument &destJsonDocument, const SpiRamJsonDocument &srcJsonDocument, String elementName)
 {
     String sourceJson;
     serializeJson(srcJsonDocument, sourceJson);

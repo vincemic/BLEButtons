@@ -1,12 +1,9 @@
 
 #pragma once
 
-/////////////////////////////////////////////////////////////////
-
 #include <ArduinoJson.h>
 #include "Arduino.h"
-
-/////////////////////////////////////////////////////////////////
+#include "JsonHelper.h"
 
 #define ESPBATTERY_CHARGING 2150 // lower boundary 4250
 #define ESPBATTERY_FULL 2050     // lower boundary 4100
@@ -14,7 +11,6 @@
 #define ESPBATTERY_LOW 1900     // upper boundary 3800
 #define ESPBATTERY_CRITICAL 1850 // upper boundary 3701
 
-/////////////////////////////////////////////////////////////////
 
 class BatteryHandlerClass
 {
@@ -51,7 +47,7 @@ public:
   void setStateChangedChargingHandler(CallbackFunction callbackFunction);
 
   void tick();
-  void report(JsonDocument &jsonDocument);
+  void report(SpiRamJsonDocument &jsonDocument);
 };
 
 extern BatteryHandlerClass BatteryHandler;
