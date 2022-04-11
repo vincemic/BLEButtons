@@ -28,7 +28,7 @@ Task batteryTask;
 Task bleTask;
 
 ProtocolProcessor protocolProcessor(&protocolLedCallback, &protocolReportCallback, NULL /* &protocolPlayCallback */);
-// ESPBattery battery(&batteryCallback);
+
 // SoundPlayer soundPlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, CARDCS);
 
 void setup()
@@ -43,6 +43,7 @@ void setup()
   BlinkerHandler.begin();
   SettingHandler.being();
   DeviceHandler.begin(&deviceButtonCallback);
+  protocolProcessor.begin();
   BLEHandler.begin(&receivedMessageCallback);
 
   Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), BLEHandler.btDeviceName);
