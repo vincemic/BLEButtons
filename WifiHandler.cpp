@@ -12,8 +12,8 @@ WifiHandlerClass::WifiHandlerClass()
 
 void WifiHandlerClass::connect()
 {
-    String sid;
-    String password;
+    std::string sid;
+    std::string password;
     wl_status_t status = WL_NO_SHIELD;
 
     SettingHandler.readWiFiSID(sid);
@@ -21,7 +21,7 @@ void WifiHandlerClass::connect()
 
     disconnect();
 
-    Log.noticeln(F("Connecting to %s ...."), sid);
+    Log.noticeln(F("Connecting to %s ...."), sid.c_str());
 
     status = WiFi.begin(sid.c_str(), password.c_str());
 

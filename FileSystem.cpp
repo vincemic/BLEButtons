@@ -13,26 +13,26 @@ void FileSystemClass::begin()
 
     if (!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED))
     {
-        Log.errorln(F("LittleFS mount failed"));
+        Log.errorln(F("[FileSystem] Mount failed"));
         return;
     }
     else
     {
-        Log.noticeln(F("LittleFS mounted"));
+        Log.noticeln(F("[FileSystem] Mounted"));
     }
 }
 
 size_t FileSystemClass::readFile(const char *path,char *buffer, size_t bufferSize)
 {
 
-    Log.traceln(F("Reading file: %s"), path);
+    Log.traceln(F("[FileSystem] Reading file: %s"), path);
 
     size_t count = 0;
     File file = LittleFS.open(path);
 
     if (!file || file.isDirectory())
     {
-        Log.errorln(F("Failed to open file for reading"));
+        Log.errorln(F("[FileSystem] Failed to open file for reading"));
         return -1;
     }
 
@@ -50,15 +50,15 @@ size_t FileSystemClass::readFile(const char *path,char *buffer, size_t bufferSiz
 
 void FileSystemClass::deleteFile(const char *path)
 {
-    Log.traceln(F("Deleting file and empty folders on path: %s"), path);
+    Log.traceln(F("[FileSystem] Deleting file and empty folders on path: %s"), path);
 
     if (LittleFS.remove(path))
     {
-        Log.traceln(F("File deleted"));
+        Log.traceln(F("[FileSystem] File deleted"));
     }
     else
     {
-        Log.errorln(F("Delete failed"));
+        Log.errorln(F("[FileSystem] Delete failed"));
     }
 
     char *pathStr = strdup(path);
@@ -67,7 +67,7 @@ void FileSystemClass::deleteFile(const char *path)
         char *ptr = strrchr(pathStr, '/');
         if (ptr)
         {
-            Log.traceln(F("Removing all empty folders on path: %s"), path);
+            Log.traceln(F("[FileSystem] Removing all empty folders on path: %s"), path);
         }
         while (ptr)
         {
@@ -85,7 +85,7 @@ void FileSystemClass::writeFile(const char *path, const char *contents)
     {
         if (strchr(path, '/'))
         {
-            Log.traceln(F("Create missing folders of: %s"), path);
+            Log.traceln(F("[FileSystem] Create missing folders of: %s"), path);
             char *pathStr = strdup(path);
             if (pathStr)
             {
@@ -102,20 +102,20 @@ void FileSystemClass::writeFile(const char *path, const char *contents)
         }
     }
 
-    Log.traceln(F("Writing file to: %s\r\n"), path);
+    Log.traceln(F("[FileSystem] Writing file to: %s"), path);
     File file = LittleFS.open(path, FILE_WRITE);
     if (!file)
     {
-        Log.errorln(F("Failed to open file for writing"));
+        Log.errorln(F("[FileSystem] Failed to open file for writing"));
         return;
     }
     if (file.print(contents))
     {
-        Log.traceln(F("File written"));
+        Log.traceln(F("[FileSystem] File written"));
     }
     else
     {
-        Log.errorln(F("Write failed"));
+        Log.errorln(F("[FileSystem] Write failed"));
     }
     file.close();
 }

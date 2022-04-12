@@ -3,10 +3,17 @@
 #include "FileSystem.h"
 #include "FileSystem.h"
 
-#define WIFISID "wifisid"
-#define WIFIPASSWORD "wifipassword"
 #define SETTINGSPATH "/settings.json"
-#define MAXSETTINGSIZE 1000
+
+void saveTask(void *parameter)
+{
+
+    while (true)
+    {
+        SettingHandler.save();
+        vTaskDelay(40);
+    }
+}
 
 SettingHandlerClass::SettingHandlerClass()
 {
@@ -14,8 +21,21 @@ SettingHandlerClass::SettingHandlerClass()
 
 void SettingHandlerClass::being()
 {
+    pJsonDocument = new SpiRamJsonDocument(100);
+    buffer = (char *) heap_caps_malloc(MAXSETTINGSIZE, MALLOC_CAP_SPIRAM);
+
     Log.traceln(F("[Settings] Starting file system on SPIFFS"));
     FileSystem.begin();
+    load();
+
+    xTaskCreatePinnedToCore(
+        saveTask, "settingsSaveTask" // A name just for humans
+        ,
+        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
+        ,
+        NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        ,
+        NULL, 0);
 }
 
 void SettingHandlerClass::clear()
@@ -23,18 +43,24 @@ void SettingHandlerClass::clear()
     FileSystem.deleteFile(SETTINGSPATH);
 }
 
-void SettingHandlerClass::save(SpiRamJsonDocument &jsonDocument)
+void SettingHandlerClass::save()
 {
-    String json;
-    serializeJson(jsonDocument, json);
-    Log.traceln(F("[Settings] Saving settings file\r%s"), json.c_str());
-    FileSystem.writeFile(SETTINGSPATH, json.c_str());
+    if (this->mustSave)
+    {
+        this->mustSave = false;
+        String json;
+        serializeJson(*pJsonDocument, json);
+        Log.traceln(F("[Settings] Saving settings file\r%s"), json.c_str());
+        FileSystem.writeFile(SETTINGSPATH, json.c_str());
+    }
 }
 
-bool SettingHandlerClass::load(SpiRamJsonDocument &jsonDocument)
+bool SettingHandlerClass::load()
 {
-    char buffer[MAXSETTINGSIZE];
+    mustSave = false;
+
     size_t fileSize = FileSystem.readFile(SETTINGSPATH, buffer, MAXSETTINGSIZE - 1);
+    Log.errorln(F("[Settings] Json document capacity: %d, file size: %d"), pJsonDocument->capacity(), fileSize);
 
     if (fileSize <= 0)
     {
@@ -42,7 +68,7 @@ bool SettingHandlerClass::load(SpiRamJsonDocument &jsonDocument)
         return false;
     }
 
-    DeserializationError error = deserializeJson(jsonDocument, buffer, fileSize);
+    DeserializationError error = deserializeJson(*pJsonDocument, buffer, fileSize);
 
     if (error)
     {
@@ -51,47 +77,47 @@ bool SettingHandlerClass::load(SpiRamJsonDocument &jsonDocument)
     }
 
     String json;
-    serializeJson(jsonDocument, json);
-    Log.traceln(F("[Settings] Settings file loaded: %s"), json.c_str());
+    serializeJson(*pJsonDocument, json);
+    Log.traceln(F("[Settings] Reading key from: %s"), json.c_str());
+
     return true;
 }
 
-void SettingHandlerClass::writeWiFiSID(const char *name)
+void SettingHandlerClass::read(const char *name, std::string &value)
 {
-    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(jsonDocument);
-    jsonDocument[WIFISID] = name;
-    save(jsonDocument);
+    const char *docValue = (*pJsonDocument)[name];
+
+    Log.traceln(F("[SettingHandler] Reading key: %s, value: %s"), name, docValue);
+
+    if (docValue != NULL)
+    {
+        value.append(docValue);
+    }
+
+    Log.traceln(F("[SettingHandler] reading key: %s, value: %s into: %s"), name, docValue, value.c_str());
 }
 
-void SettingHandlerClass::writeWiFiPassword(const char *password)
+void SettingHandlerClass::write(const char *name, const char *value)
 {
-    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(jsonDocument);
-    jsonDocument[WIFIPASSWORD] = password;
-    save(jsonDocument);
+    String newValue(value);
+    Log.traceln(F("[SettingHandler] setting key: %s, value: %s"), name, value);
+    (*pJsonDocument)[name] = newValue;
+    mustSave = true;
 }
 
-void SettingHandlerClass::readWiFiSID(String &wifiSID)
+void SettingHandlerClass::readWiFiSID(std::string &wifiSID)
 {
-    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(jsonDocument);
-    wifiSID.concat(jsonDocument[WIFISID].as<const char *>());
+    read(WIFISID, wifiSID);
 }
 
-void SettingHandlerClass::readWiFiPassword(String &password)
+void SettingHandlerClass::readWiFiPassword(std::string &password)
 {
-    SpiRamJsonDocument jsonDocument(MAXSETTINGSIZE);
-    load(jsonDocument);
-    password.concat(jsonDocument[WIFIPASSWORD].as<const char *>());
+    read(WIFIPASSWORD, password);
 }
 
 void SettingHandlerClass::report(SpiRamJsonDocument &jsonDocument)
 {
-    SpiRamJsonDocument settingsJsonDocument(MAXSETTINGSIZE);
-    load(settingsJsonDocument);
-
-    jsonMerge(jsonDocument, settingsJsonDocument,"settings");
+    jsonMerge(jsonDocument, *pJsonDocument, "settings");
 }
 
 SettingHandlerClass SettingHandler;

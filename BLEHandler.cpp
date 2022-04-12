@@ -20,7 +20,7 @@ void BLEHandlerClass::begin(ReceivedMessageCallbback receivedMessageCallbback)
   pServer->setCallbacks(new HandlerServerCallbacks());
 
   // Create the BLE Service - number of handlers are import with large characteristic lists
-  pService = pServer->createService(BLEUUID(BLE_SERVICE_UUID), 50);
+  pService = pServer->createService(BLEUUID(BLE_SERVICE_UUID), 75);
   BLECharacteristic *pCharacteristic = pService->createCharacteristic(BLEUUID((uint16_t)0x2a01), BLECharacteristic::PROPERTY_READ);
   pCharacteristic->setValue(generalRemote); // Appearance characteristic set for general remote control
 
@@ -32,6 +32,11 @@ void BLEHandlerClass::begin(ReceivedMessageCallbback receivedMessageCallbback)
   for (Led &led : DeviceHandler.leds)
   {
     registerDeviceCharacteristic(&led);
+  }
+
+  for (Setting &setting : DeviceHandler.settings)
+  {
+    registerDeviceCharacteristic(&setting);
   }
 
   setConnected(false);

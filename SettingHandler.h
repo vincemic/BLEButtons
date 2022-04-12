@@ -2,21 +2,27 @@
 #include <ArduinoJson.h>
 #include "JsonHelper.h"
 
+#define WIFISID "wifisid"
+#define WIFIPASSWORD "wifipassword"
+#define MAXSETTINGSIZE 1000
 class SettingHandlerClass
 {
 
 private:
-    void save(SpiRamJsonDocument &jsonDocument);
-    bool load(SpiRamJsonDocument &jsonDocument);
+    SpiRamJsonDocument *pJsonDocument;
+    char *buffer = NULL;
+    bool mustSave = false;
+
 
 public:
     SettingHandlerClass();
     void being();
-
-    void writeWiFiSID(const char *name);
-    void writeWiFiPassword(const char *password);
-    void readWiFiSID(String &wifiSID);
-    void readWiFiPassword(String &password);
+    void save();
+    bool load();
+    void read(const char *name, std::string &value);
+    void write(const char *name, const char *value);
+    void readWiFiSID(std::string &wifiSID);
+    void readWiFiPassword(std::string &password);
     void clear();
     void report(SpiRamJsonDocument &jsonDocument);
 };
