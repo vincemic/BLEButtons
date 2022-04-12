@@ -7,6 +7,14 @@ DeviceHandlerClass::DeviceHandlerClass()
 
 void DeviceHandlerClass::begin(ButtonChangeCallback buttonChangeCallback)
 {
+    for(Button &btn : buttons) {
+        btn.deviceHandler = this;
+    }
+
+    for(Led &led : leds) {
+        led.deviceHandler = this;
+    }
+
     this->buttonChangeCallback = buttonChangeCallback;
 
     // Turn off LDO2 to cut power to seesaw to reset
@@ -41,9 +49,9 @@ void DeviceHandlerClass::tick()
                 {
                     Log.traceln(F("[DeviceHandler] Button %d on"), btn.index + 1);
                     btn.debounce = true;
+                    btn.notify(true);
+                    buttonChangeCallback(btn.index,true);
 
-                    if (buttonChangeCallback != NULL)
-                        buttonChangeCallback(btn.index + 1, true);
                 }
             }
             else if (!switchOn)
@@ -52,9 +60,9 @@ void DeviceHandlerClass::tick()
                 {
                     Log.traceln(F("[DeviceHandler] Button %d off"), btn.index + 1);
                     btn.debounce = false;
+                    btn.notify(false);
+                    buttonChangeCallback(btn.index,false);
 
-                    if (buttonChangeCallback != NULL)
-                        buttonChangeCallback(btn.index + 1, false);
                 }
             }
         }
@@ -84,14 +92,14 @@ bool DeviceHandlerClass::startSeesaw()
 
             Log.noticeln(F("[DeviceHandler] Seesaw started OK!"));
 
-            for (Button btn : buttons)
+            for (Button &btn : buttons)
             {
                 seesaw.pinMode(btn.pin, INPUT_PULLUP);
             }
 
-            for (Led l : leds)
+            for (Led &led : leds)
             {
-                seesaw.analogWrite(l.pin, 127);
+                turnOffLED(led.index);
             }
 
             seesawReady = true;
@@ -101,17 +109,19 @@ bool DeviceHandlerClass::startSeesaw()
     return seesawReady;
 }
 
-void DeviceHandlerClass::turnOnLED(uint8_t number)
+void DeviceHandlerClass::turnOnLED(uint8_t index)
 {
-    uint8_t index = number - 1;
-    if (index >= 0 && number < sizeof(leds) && seesawReady)
-        seesaw.analogWrite(leds[index].pin, 127);
+    if (index < sizeof(leds) && seesawReady) {
+        seesaw.analogWrite(leds[index].pin, 255);
+        leds[index].notify(true);
+    }
 }
-void DeviceHandlerClass::turnOffLED(uint8_t number)
+void DeviceHandlerClass::turnOffLED(uint8_t index)
 {
-    uint8_t index = number - 1;
-    if (index >= 0 && number < sizeof(leds) && seesawReady)
+    if (index < sizeof(leds) && seesawReady) {
         seesaw.analogWrite(leds[index].pin, 0);
+        leds[index].notify(false);
+    }
 }
 
 DeviceHandlerClass DeviceHandler;

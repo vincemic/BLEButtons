@@ -21,17 +21,17 @@ void BLEHandlerClass::begin(ReceivedMessageCallbback receivedMessageCallbback)
 
   // Create the BLE Service - number of handlers are import with large characteristic lists
   pService = pServer->createService(BLEUUID(BLE_SERVICE_UUID), 50);
-  BLECharacteristic *pCharacteristic = pService->createCharacteristic(BLEUUID((uint16_t) 0x2a01),BLECharacteristic::PROPERTY_READ );
-  pCharacteristic->setValue(generalRemote); //Appearance characteristic set for general remote control
+  BLECharacteristic *pCharacteristic = pService->createCharacteristic(BLEUUID((uint16_t)0x2a01), BLECharacteristic::PROPERTY_READ);
+  pCharacteristic->setValue(generalRemote); // Appearance characteristic set for general remote control
 
-  for (Button button : DeviceHandler.buttons)
+  for (Button &button : DeviceHandler.buttons)
   {
-    registerDeviceCharacteristic((const char *) button.bleIdentifier, (const char *) button.name, new HandlerCharacteristicCallbacks(), BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+    registerDeviceCharacteristic(&button);
   }
 
-  for (Led led : DeviceHandler.leds)
+  for (Led &led : DeviceHandler.leds)
   {
-    registerDeviceCharacteristic((const char *) led.bleIdentifier, (const char *)  led.name, new HandlerCharacteristicCallbacks(), BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
+    registerDeviceCharacteristic(&led);
   }
 
   setConnected(false);
@@ -93,21 +93,23 @@ void BLEHandlerClass::send(const char *message)
   }
 }
 
-void BLEHandlerClass::registerDeviceCharacteristic(const char *UUID, const char *name, BLECharacteristicCallbacks *bleCharacteristicCallbacks, uint32_t properties)
+void BLEHandlerClass::registerDeviceCharacteristic(Device *device)
 {
   int defaultValue = 0;
-  Log.traceln(F("[BLEHandler] Registering characteristic %s"), UUID);
+  Log.traceln(F("[BLEHandler] Registering characteristic %s"), device->bleIdentifier);
 
-  BLEDescriptor *pBLEDescriptor = new BLEDescriptor(BLEUUID("2901"));
-  pBLEDescriptor->setValue(name);
+  BLEDescriptor *pNameDescriptor = new BLEDescriptor(BLEUUID("2901"));
+  pNameDescriptor->setValue(device->name);
 
   // Create a BLE Characteristic
-  BLECharacteristic *pCharacteristic = pService->createCharacteristic(UUID, properties);
-  pCharacteristic->setValue(defaultValue);
+  device->pCharacteristic = pService->createCharacteristic(device->bleIdentifier, device->getProperties());
 
-  pCharacteristic->addDescriptor(new BLE2902());
-  pCharacteristic->addDescriptor(pBLEDescriptor);
-  pCharacteristic->setCallbacks(bleCharacteristicCallbacks);
+  device->pCharacteristic->setValue(defaultValue);
+
+  device->pCharacteristic->addDescriptor(new BLE2902());
+  device->pCharacteristic->addDescriptor(pNameDescriptor);
+
+  device->pCharacteristic->setCallbacks(device);
 }
 
 BLEHandlerClass BLEHandler;

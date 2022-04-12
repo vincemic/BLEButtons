@@ -114,35 +114,16 @@ void bleTick()
   BLEHandler.tick();
 }
 
-void deviceButtonCallback(uint8_t buttonNumber, bool isOn)
+void deviceButtonCallback(uint8_t index, bool isOn)
 {
-  Log.traceln(F("Got button callback for button %d"), buttonNumber);
+  Log.traceln(F("Got button callback for button %d"), index + 1);
   if (isOn)
   {
-
-    DeviceHandler.turnOnLED(buttonNumber);
-
+    DeviceHandler.turnOnLED(index);
   }
   else
   {
-
-    DeviceHandler.turnOffLED(buttonNumber);
-
-  }
-}
-
-void protocolLedCallback(uint8_t ledNumber, bool turnOn)
-{
-  Log.traceln(F("Got protocol callback for led %d"), ledNumber);
-  if (turnOn)
-  {
-    DeviceHandler.turnOnLED(ledNumber);
-
-  }
-  else
-  {
-    DeviceHandler.turnOffLED(ledNumber);
-
+    DeviceHandler.turnOffLED(index);
   }
 }
 

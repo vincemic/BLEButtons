@@ -4,6 +4,7 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <ArduinoLog.h>
+#include "DeviceHandler.h"
 
 // See the following for generating UUIDs:
 // https://www.uuidgenerator.net/
@@ -25,7 +26,7 @@ public:
   const char *deviceName = "BLEButtons";
   volatile boolean _dREQFlag = false;
   ReceivedMessageCallbback receivedMessageCallbback;
-  void registerDeviceCharacteristic(const char *UUID, const char *name, BLECharacteristicCallbacks *bleCharacteristicCallbacks,uint32_t properties);
+  void registerDeviceCharacteristic(Device *device);
 
 private:
   void setConnected(bool);
@@ -56,15 +57,4 @@ public:
     Log.infoln(F("[BLEHandler] Device disconnected"));
     BLEHandler.setConnected(false);
   }
-};
-
-class HandlerCharacteristicCallbacks : public BLECharacteristicCallbacks
-{
-
-public:
-  void onWrite(BLECharacteristic *pCharacteristic)
-  {
-    BLEHandler.receive(pCharacteristic);
-  }
-
 };
