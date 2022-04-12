@@ -6,7 +6,6 @@
 
 #include "DeviceHandler.h"
 #include "BlinkerHandler.h"
-#include "ProtocolProcessor.h"
 #include "SettingHandler.h"
 #include "WifiHandler.h"
 #include "BatteryHandler.h"
@@ -27,8 +26,6 @@ Task wifiTask;
 Task batteryTask;
 Task bleTask;
 
-ProtocolProcessor protocolProcessor(&protocolLedCallback, &protocolReportCallback, NULL /* &protocolPlayCallback */);
-
 // SoundPlayer soundPlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, CARDCS);
 
 void setup()
@@ -43,10 +40,8 @@ void setup()
   BlinkerHandler.begin();
   SettingHandler.being();
   DeviceHandler.begin(&deviceButtonCallback);
-  protocolProcessor.begin();
   BLEHandler.begin(&receivedMessageCallback);
-
-  Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), BLEHandler.btDeviceName);
+  Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), BLEHandler.deviceName);
 
   //  if (!soundPlayer.begin())
   //  {
@@ -90,6 +85,7 @@ void setup()
 void loop()
 {
   scheduler.execute();
+  delay(10);
 }
 
 void blinkTick()
@@ -123,15 +119,15 @@ void deviceButtonCallback(uint8_t buttonNumber, bool isOn)
   Log.traceln(F("Got button callback for button %d"), buttonNumber);
   if (isOn)
   {
-    protocolProcessor.sendStatus("button", "on", buttonNumber);
+
     DeviceHandler.turnOnLED(buttonNumber);
-    protocolProcessor.sendStatus("led", "on", buttonNumber);
+
   }
   else
   {
-    protocolProcessor.sendStatus("button", "off", buttonNumber);
+
     DeviceHandler.turnOffLED(buttonNumber);
-    protocolProcessor.sendStatus("led", "off", buttonNumber);
+
   }
 }
 
@@ -141,12 +137,12 @@ void protocolLedCallback(uint8_t ledNumber, bool turnOn)
   if (turnOn)
   {
     DeviceHandler.turnOnLED(ledNumber);
-    protocolProcessor.sendStatus("led", "on", ledNumber, true);
+
   }
   else
   {
     DeviceHandler.turnOffLED(ledNumber);
-    protocolProcessor.sendStatus("led", "off", ledNumber, true);
+
   }
 }
 
@@ -165,7 +161,6 @@ void protocolReportCallback()
   jsonDocument[F("memory")][F("freepsram")] = ESP.getFreePsram();
   jsonDocument[F("memory")][F("flashchipsize")] = ESP.getFlashChipSize();
 
-  protocolProcessor.send(jsonDocument);
 }
 
 void batteryCallback()
@@ -180,9 +175,9 @@ void protocolPlayCallback(const char *filename)
 {
   Log.traceln(F("Play: %s"), filename);
   // soundPlayer.play(filename);
-  protocolProcessor.sendStatus("sound", "play", filename, true);
+
 }
 void receivedMessageCallback(const char* message, size_t size)
 {
-  protocolProcessor.process(message,size);
+
 }

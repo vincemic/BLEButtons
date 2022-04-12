@@ -1,31 +1,7 @@
 #include "BLEHandler.h"
 #include <ArduinoLog.h>
 #include "BlinkerHandler.h"
-
-void feederTask2(void *parameter)
-{
-
-  while (true)
-  {
-    if (BLEHandler._dREQFlag)
-    {
-      // Reset the flag right away to allow it to capture further interrupts
-      BLEHandler._dREQFlag = false;
-      size_t item_size;
-      char *message = (char *)xRingbufferReceive(BLEHandler.ringBuffer, &item_size, pdMS_TO_TICKS(1000));
-
-      // Check received item
-      if (message != NULL)
-      {
-        BLEHandler.receivedMessageCallbback(message, item_size);
-        vRingbufferReturnItem(BLEHandler.ringBuffer, (void *)message);
-      }
- 
-    }
-
-    vTaskDelay(40);
-  }
-}
+#include "DeviceHandler.h"
 
 BLEHandlerClass::BLEHandlerClass()
 {
@@ -33,58 +9,35 @@ BLEHandlerClass::BLEHandlerClass()
 
 void BLEHandlerClass::begin(ReceivedMessageCallbback receivedMessageCallbback)
 {
-
   this->receivedMessageCallbback = receivedMessageCallbback;
 
+  int generalRemote = 384;
   // Create the BLE Device
-  BLEDevice::init(btDeviceName);
+  BLEDevice::init(deviceName);
 
   // Create the BLE Server
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new HandlerServerCallbacks());
 
-  // Create the BLE Service
-  BLEService *pService = pServer->createService(BLE_SERVICE_UUID);
+  // Create the BLE Service - number of handlers are import with large characteristic lists
+  pService = pServer->createService(BLEUUID(BLE_SERVICE_UUID), 50);
+  BLECharacteristic *pCharacteristic = pService->createCharacteristic(BLEUUID((uint16_t) 0x2a01),BLECharacteristic::PROPERTY_READ );
+  pCharacteristic->setValue(generalRemote); //Appearance characteristic set for general remote control
 
-  // Create a BLE Characteristic
-  pTxCharacteristic = pService->createCharacteristic(
-      BLE_CHARACTERISTIC_UUID_TX,
-      BLECharacteristic::PROPERTY_NOTIFY);
+  for (Button button : DeviceHandler.buttons)
+  {
+    registerDeviceCharacteristic((const char *) button.bleIdentifier, (const char *) button.name, new HandlerCharacteristicCallbacks(), BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_READ);
+  }
 
-  pTxCharacteristic->setCallbacks(new HandlerCharacteristicCallbacks());
+  for (Led led : DeviceHandler.leds)
+  {
+    registerDeviceCharacteristic((const char *) led.bleIdentifier, (const char *)  led.name, new HandlerCharacteristicCallbacks(), BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ);
+  }
 
-  // This descriptor is required by BLE spec to allow notifications
-  // This is only seems to be checked by Win OS stacks currently
-  pTxCharacteristic->addDescriptor(new BLE2902());
-
-  pRxCharacteristic = pService->createCharacteristic(
-      BLE_CHARACTERISTIC_UUID_RX,
-      BLECharacteristic::PROPERTY_WRITE);
-
-  pRxCharacteristic->setCallbacks(new HandlerCharacteristicCallbacks());
+  setConnected(false);
 
   // Start the service
   pService->start();
-
-  // Create ring buffer
-
-  ringBuffer = xRingbufferCreate(500, RINGBUF_TYPE_NOSPLIT);
-  if (ringBuffer == NULL)
-  {
-    printf("Failed to create ring buffer\n");
-  }
-
-  // Now set up two tasks to run independently.
-  xTaskCreatePinnedToCore(
-      feederTask2, "feederTask2" // A name just for humans
-      ,
-      4096 // This stack size can be checked & adjusted by reading the Stack Highwater
-      ,
-      NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-      ,
-      NULL, 0);
-
-  setConnected(false);
 }
 
 void BLEHandlerClass::tick()
@@ -128,20 +81,33 @@ void BLEHandlerClass::receive(BLECharacteristic *pCharacteristic)
 {
   BaseType_t woke;
   std::string value = pCharacteristic->getValue();
-
-  // Copy string into ring buffer including the null terminator
-  xRingbufferSendFromISR(ringBuffer, value.c_str(), value.length() + 1, &woke);
-  _dREQFlag = true;
 }
 
 void BLEHandlerClass::send(const char *message)
 {
   if (connected)
   {
-    pTxCharacteristic->setValue(message);
-    pTxCharacteristic->notify();
+    // pTxCharacteristic->setValue(message);
+    // pTxCharacteristic->notify();
     Log.traceln(F("[BLEHandler] Sent %s"), message);
   }
+}
+
+void BLEHandlerClass::registerDeviceCharacteristic(const char *UUID, const char *name, BLECharacteristicCallbacks *bleCharacteristicCallbacks, uint32_t properties)
+{
+  int defaultValue = 0;
+  Log.traceln(F("[BLEHandler] Registering characteristic %s"), UUID);
+
+  BLEDescriptor *pBLEDescriptor = new BLEDescriptor(BLEUUID("2901"));
+  pBLEDescriptor->setValue(name);
+
+  // Create a BLE Characteristic
+  BLECharacteristic *pCharacteristic = pService->createCharacteristic(UUID, properties);
+  pCharacteristic->setValue(defaultValue);
+
+  pCharacteristic->addDescriptor(new BLE2902());
+  pCharacteristic->addDescriptor(pBLEDescriptor);
+  pCharacteristic->setCallbacks(bleCharacteristicCallbacks);
 }
 
 BLEHandlerClass BLEHandler;

@@ -1,32 +1,6 @@
 #include "DeviceHandler.h"
 #include <ArduinoLog.h>
 
-struct button
-{
-    uint8_t index = 0;
-    uint8_t pin = 0;
-    bool debounce = true;
-
-    button(uint8_t index, uint8_t pin)
-    {
-        this->index = index;
-        this->pin = pin;
-    }
-};
-button buttons[] = {{0, 18}, {1, 19}, {2, 20}, {3, 2}};
-struct led
-{
-    uint8_t index = 0;
-    uint8_t pin = 0;
-    bool on = false;
-    led(uint8_t index, uint8_t pin)
-    {
-        this->index = index;
-        this->pin = pin;
-    }
-};
-led leds[] = {{0, 12}, {1, 13}, {2, 0}, {3, 1}};
-
 DeviceHandlerClass::DeviceHandlerClass()
 {
 }
@@ -56,7 +30,7 @@ void DeviceHandlerClass::tick()
     {
         bool switchOn = false;
 
-        for (button &btn : buttons)
+        for (Button &btn : buttons)
         {
 
             switchOn = !seesaw.digitalRead(btn.pin);
@@ -110,12 +84,12 @@ bool DeviceHandlerClass::startSeesaw()
 
             Log.noticeln(F("[DeviceHandler] Seesaw started OK!"));
 
-            for (button btn : buttons)
+            for (Button btn : buttons)
             {
                 seesaw.pinMode(btn.pin, INPUT_PULLUP);
             }
 
-            for (led l : leds)
+            for (Led l : leds)
             {
                 seesaw.analogWrite(l.pin, 127);
             }
