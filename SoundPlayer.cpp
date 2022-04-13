@@ -1,120 +1,80 @@
-#include "SoundsPlayer.h"
+#include "SoundPlayer.h"
 #include <ArduinoLog.h>
-
-static SoundPlayer *myself;
 
 #ifndef _BV
 #define _BV(x) (1 << (x))
 #endif
 
-void feederTask(void *parameter)
-{
 
-  while (true)
-  {
-    if (myself->_dREQFlag)
-    {
-      myself->_dREQFlag = false;
-      myself->feedBuffer();
-    }
+// Mapping specifc to Unexpected Maker ESP32-S3 Feather
+#define VS1053_RESET -1 // VS1053 reset pin (not used!)
+#define VS1053_CS 38    // VS1053 chip select pin (output)
+#define VS1053_DCS 3   // VS1053 Data/command select pin (output)
+#define CARDCS 33       // Card chip select pin
+#define VS1053_DREQ 1  // VS1053 Data request, ideally an Interrupt pin
 
-    vTaskDelay(40);
-  }
-}
-
-IRAM_ATTR static void feederISR(void)
-{
-  myself->_dREQFlag = true;
-}
-
-boolean SoundPlayer::useInterrupt(uint8_t type)
-{
-  myself = this; // oy vey
-
-  if (type == VS1053_FILEPLAYER_TIMER0_INT)
-  {
-#if defined(__AVR__)
-    OCR0A = 0xAF;
-    TIMSK0 |= _BV(OCIE0A);
-    return true;
-#elif defined(__arm__) && defined(CORE_TEENSY)
-    IntervalTimer *t = new IntervalTimer();
-    return (t && t->begin(feeder, 1024)) ? true : false;
-#elif defined(ARDUINO_STM32_FEATHER)
-    HardwareTimer timer(3);
-    // Pause the timer while we're configuring it
-    timer.pause();
-
-    // Set up period
-    timer.setPeriod(25000); // in microseconds
-
-    // Set up an interrupt on channel 1
-    timer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
-    timer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
-    timer.attachCompare1Interrupt(feeder);
-
-    // Refresh the timer's count, prescale, and overflow
-    timer.refresh();
-
-    // Start the timer counting
-    timer.resume();
-
-#else
-    return false;
-#endif
-  }
-  if (type == VS1053_FILEPLAYER_PIN_INT)
-  {
-    int8_t irq = digitalPinToInterrupt(_dreq);
-    // Serial.print("Using IRQ "); Serial.println(irq);
-    if (irq == -1)
-      return false;
-#if defined(SPI_HAS_TRANSACTION) && !defined(ESP8266) && !defined(ESP32) && !defined(ARDUINO_STM32_FEATHER)
-    SPI.usingInterrupt(irq);
-#endif
-    /* eziya76, changed from CHANGE to RISING */
-    attachInterrupt(irq, feederISR, RISING);
-    return true;
-  }
-  return false;
-}
-
-SoundPlayer::SoundPlayer(
-    int8_t rst, int8_t cs, int8_t dcs, int8_t dreq,
-    int8_t cardcs)
-    : Adafruit_VS1053(rst, cs, dcs, dreq)
+SoundPlayerClass::SoundPlayerClass()
+    : Adafruit_VS1053(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ)
 {
   playingMusic = false;
-  _cardCS = cardcs;
+  cardCS = CARDCS;
 }
 
-boolean SoundPlayer::begin(void)
+boolean SoundPlayerClass::begin(void)
 {
   uint8_t v = Adafruit_VS1053::begin();
 
-  useInterrupt(VS1053_FILEPLAYER_PIN_INT); // DREQ int
+  if (v != 4)
+  {
+    Log.errorln(F("[SoundPlayer] Couldn't initialize VS1053"));
+    return false;
+  }
 
-  // Now set up two tasks to run independently.
+  if (!SD.begin(CARDCS))
+  {
+    Log.errorln(F("[SoundPlayer] Couldn't initialize SD card"));
+    return false;
+  }
+
+  int8_t irq = digitalPinToInterrupt(_dreq);
+
+  attachInterrupt(
+      irq, []() IRAM_ATTR
+      { SoundPlayer.dREQFlag = true; },
+      RISING);
+
   xTaskCreatePinnedToCore(
-      feederTask, "feederTask" // A name just for humans
-      ,
-      2048 // This stack size can be checked & adjusted by reading the Stack Highwater
-      ,
-      NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-      ,
-      NULL, 0);
+      [](void *parameters)
+      {
+        while (true)
+        {
+          if (SoundPlayer.dREQFlag)
+          {
+            SoundPlayer.dREQFlag = false;
+            SoundPlayer.feedBuffer();
+          }
 
-  return (v == 4);
+          vTaskDelay(40);
+        }
+      },
+      "feederTask",
+      2048, // This stack size can be checked & adjusted by reading the Stack Highwater
+      NULL, //
+      2,    // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      NULL,
+      0);
+
+  return true;
 }
 
-void SoundPlayer::stop(void)
+void SoundPlayerClass::stop()
 {
   // wrap it up!
   playingMusic = false;
 
   delay(1000);
 
-  if(currentTrack)
+  if (currentTrack)
     currentTrack.close();
 
   // cancel all playback
@@ -123,18 +83,18 @@ void SoundPlayer::stop(void)
   delay(5);
 }
 
-boolean SoundPlayer::stopped(void)
+boolean SoundPlayerClass::isStopped()
 {
   return (!playingMusic);
 }
 
 // Just checks to see if the name ends in ".mp3"
-boolean SoundPlayer::isMP3File(const char *fileName)
+boolean SoundPlayerClass::isMP3File(const char *fileName)
 {
   return (strlen(fileName) > 4) && !strcasecmp(fileName + strlen(fileName) - 4, ".mp3");
 }
 
-unsigned long SoundPlayer::mp3_ID3Jumper(File mp3)
+unsigned long SoundPlayerClass::mp3_ID3Jumper(File mp3)
 {
 
   char tag[4];
@@ -190,7 +150,7 @@ unsigned long SoundPlayer::mp3_ID3Jumper(File mp3)
   return start;
 }
 
-boolean SoundPlayer::play(const char *trackname)
+boolean SoundPlayerClass::play(const char *trackfilepath)
 {
   stop();
 
@@ -202,17 +162,17 @@ boolean SoundPlayer::play(const char *trackname)
 
   delay(5);
 
-  currentTrack = SD.open(trackname);
+  currentTrack = SD.open(trackfilepath);
 
   if (!currentTrack)
   {
-    Log.errorln(F("[SoundPlayer] Could not open SD file"), trackname);
+    Log.errorln(F("[SoundPlayer] Could not open SD file"), trackfilepath);
     return false;
   }
 
   // We know we have a valid file. Check if .mp3
   // If so, check for ID3 tag and jump it if present.
-  if (isMP3File(trackname))
+  if (isMP3File(trackfilepath))
   {
     currentTrack.seek(mp3_ID3Jumper(currentTrack));
   }
@@ -226,7 +186,7 @@ boolean SoundPlayer::play(const char *trackname)
   return true;
 }
 
-void SoundPlayer::feedBuffer()
+void SoundPlayerClass::feedBuffer()
 {
   if (!playingMusic)
   {
@@ -252,12 +212,12 @@ void SoundPlayer::feedBuffer()
   }
 }
 
-void SoundPlayer::report(JsonDocument &jsonDocument)
+void SoundPlayerClass::report(JsonDocument &jsonDocument)
 {
   auto o = jsonDocument["files"];
 }
 
-void SoundPlayer::printDirectory(const char *path, int numTabs)
+void SoundPlayerClass::printDirectory(const char *path, int numTabs)
 {
   File dir = SD.open(path);
 
@@ -266,7 +226,7 @@ void SoundPlayer::printDirectory(const char *path, int numTabs)
 
   dir.close();
 }
-void SoundPlayer::printDirectory(File dir, int numTabs)
+void SoundPlayerClass::printDirectory(File dir, int numTabs)
 {
   while (true)
   {
@@ -297,3 +257,5 @@ void SoundPlayer::printDirectory(File dir, int numTabs)
     entry.close();
   }
 }
+
+SoundPlayerClass SoundPlayer;

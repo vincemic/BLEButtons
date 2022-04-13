@@ -9,14 +9,8 @@
 #include "SettingHandler.h"
 #include "WifiHandler.h"
 #include "BatteryHandler.h"
-#include "SoundsPlayer.h"
+#include "SoundPlayer.h"
 #include "BLEHandler.h"
-
-#define VS1053_RESET -1 // VS1053 reset pin (not used!)
-#define VS1053_CS 32    // VS1053 chip select pin (output)
-#define VS1053_DCS 33   // VS1053 Data/command select pin (output)
-#define CARDCS 14       // Card chip select pin
-#define VS1053_DREQ 15  // VS1053 Data request, ideally an Interrupt pin
 
 // Scheduler
 Scheduler scheduler;
@@ -40,19 +34,18 @@ void setup()
   BlinkerHandler.begin();
   SettingHandler.being();
   DeviceHandler.begin(&deviceButtonCallback);
-  BLEHandler.begin(&receivedMessageCallback);
+  BLEHandler.begin();
   Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), BLEHandler.deviceName);
 
-  //  if (!soundPlayer.begin())
-  //  {
-  //    Log.errorln(F("Couldn't initialize VS1053"));
-  //  }
-  // soundPlayer.setVolume(0, 0);
+  if (!SoundPlayer.begin())
+  {
+    Log.errorln(F("Couldn't initialize VS1053"));
+  }
+  else
+  {
+    SoundPlayer.setVolume(0, 0);
+  }
 
-  // if (!SD.begin(CARDCS))
-  //  {
-  //    Log.errorln(F("Couldn't initialize SD card"));
-  //  }
 
   WifiHandler.connect();
 
@@ -142,6 +135,9 @@ void protocolReportCallback()
   jsonDocument[F("memory")][F("freepsram")] = ESP.getFreePsram();
   jsonDocument[F("memory")][F("flashchipsize")] = ESP.getFlashChipSize();
 
+  String json;
+  serializeJson(jsonDocument, json);
+  Log.traceln(F("Report:\r%s"), json.c_str());
 }
 
 void batteryCallback()
@@ -156,9 +152,4 @@ void protocolPlayCallback(const char *filename)
 {
   Log.traceln(F("Play: %s"), filename);
   // soundPlayer.play(filename);
-
-}
-void receivedMessageCallback(const char* message, size_t size)
-{
-
 }

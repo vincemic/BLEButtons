@@ -2,24 +2,22 @@
 #include <Adafruit_VS1053.h>
 #include <ArduinoJson.h>
 
-class SoundPlayer : public Adafruit_VS1053
+class SoundPlayerClass : public Adafruit_VS1053
 {
 
 public:
-  SoundPlayer(int8_t rst, int8_t cs, int8_t dcs, int8_t dreq,
-              int8_t cardCS);
+  SoundPlayerClass();
 
-  volatile boolean _dREQFlag = false;
+  volatile boolean dREQFlag = false;
 
-  boolean begin(void);
-  boolean useInterrupt(uint8_t type);
+  boolean begin();
   volatile boolean playingMusic;
   void feedBuffer();
   static boolean isMP3File(const char *fileName);
   unsigned long mp3_ID3Jumper(File mp3);
-  boolean play(const char *trackname);
-  void stop(void);
-  boolean stopped(void);
+  boolean play(const char *trackfilepath);
+  void stop();
+  boolean isStopped();
   void pausePlaying(boolean pause);
 
   void printDirectory(const char *path, int numTabs);
@@ -27,6 +25,8 @@ public:
   void report(JsonDocument &jsonDocument);
 
 private:
-  uint8_t _cardCS;
+  uint8_t cardCS;
   File currentTrack;
 };
+
+extern SoundPlayerClass SoundPlayer;

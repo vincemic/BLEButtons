@@ -5,16 +5,6 @@
 
 #define SETTINGSPATH "/settings.json"
 
-void saveTask(void *parameter)
-{
-
-    while (true)
-    {
-        SettingHandler.save();
-        vTaskDelay(40);
-    }
-}
-
 SettingHandlerClass::SettingHandlerClass()
 {
 }
@@ -22,20 +12,27 @@ SettingHandlerClass::SettingHandlerClass()
 void SettingHandlerClass::being()
 {
     pJsonDocument = new SpiRamJsonDocument(100);
-    buffer = (char *) heap_caps_malloc(MAXSETTINGSIZE, MALLOC_CAP_SPIRAM);
+    buffer = (char *)heap_caps_malloc(MAXSETTINGSIZE, MALLOC_CAP_SPIRAM);
 
     Log.traceln(F("[Settings] Starting file system on SPIFFS"));
     FileSystem.begin();
     load();
 
     xTaskCreatePinnedToCore(
-        saveTask, "settingsSaveTask" // A name just for humans
-        ,
-        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
-        ,
-        NULL, 2 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-        ,
-        NULL, 0);
+        [](void *parameter)
+        {
+            while (true)
+            {
+                SettingHandler.save();
+                vTaskDelay(40);
+            }
+        },
+        "settingsSaveTask", // A name just for humans
+        4096,               // This stack size can be checked & adjusted by reading the Stack Highwater
+        NULL,               //
+        2,                  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL,
+        0);
 }
 
 void SettingHandlerClass::clear()
@@ -45,9 +42,9 @@ void SettingHandlerClass::clear()
 
 void SettingHandlerClass::save()
 {
-    if (this->mustSave)
+    if (mustSave)
     {
-        this->mustSave = false;
+        mustSave = false;
         String json;
         serializeJson(*pJsonDocument, json);
         Log.traceln(F("[Settings] Saving settings file\r%s"), json.c_str());

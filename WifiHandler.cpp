@@ -19,9 +19,7 @@ void WifiHandlerClass::connect()
     SettingHandler.readWiFiSID(sid);
     SettingHandler.readWiFiPassword(password);
 
-    disconnect();
-
-    Log.noticeln(F("Connecting to %s ...."), sid.c_str());
+    Log.noticeln(F("[WifiHandler] Connecting to %s ...."), sid.c_str());
 
     status = WiFi.begin(sid.c_str(), password.c_str());
 
@@ -34,7 +32,7 @@ void WifiHandlerClass::disconnect()
     {
         WiFi.disconnect();
 
-        Log.noticeln(F("WiFi disconnected"));
+        Log.noticeln(F("[WifiHandler] WiFi disconnected"));
     }
 }
 
@@ -45,13 +43,13 @@ void WifiHandlerClass::tick()
     switch (status)
     {
     case WL_CONNECTED:
-        Log.noticeln(F("Connected to WiFI (%s:%s)"), WiFi.getHostname(), WiFi.localIP().toString());
+        Log.noticeln(F("[WifiHandler] Connected to WiFI (%s:%s)"), WiFi.getHostname(), WiFi.localIP().toString());
         break;
     case WL_CONNECT_FAILED:
-        Log.noticeln(F("WiFi connection failed"));
+        Log.noticeln(F("[WifiHandler] WiFi connection failed"));
         break;
     default:
-        Log.noticeln(F("Could not connect to WiFi status code: %d"), status);
+        Log.noticeln(F("[WifiHandler] Could not connect to WiFi status code: %d"), status);
     }
 }
 

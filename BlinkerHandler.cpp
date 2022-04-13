@@ -2,20 +2,18 @@
 #include <Arduino.h>
 #include <ArduinoLog.h>
 
-
-BlinkerHandlerClass::BlinkerHandlerClass() 
+BlinkerHandlerClass::BlinkerHandlerClass()
 {
-
 }
 
-void BlinkerHandlerClass::begin() {
-
+void BlinkerHandlerClass::begin()
+{
 	Log.traceln(F("[Blinker] starting"));
 	pinMode(LED_BUILTIN, OUTPUT);
-	
+
 	pixel = new Adafruit_NeoPixel(1, RGB_DATA, NEO_GRB + NEO_KHZ800);
 	pixel->setPixelColor(0, pixel->Color(2, 2, 2));
-    pixel->show();
+	pixel->show();
 }
 
 void BlinkerHandlerClass::tick()
@@ -29,28 +27,31 @@ void BlinkerHandlerClass::blink()
 	{
 		digitalWrite(LED_BUILTIN, LOW);
 		pixel->setPixelColor(0, color);
-		 pixel->show();
+		pixel->show();
 		_isOn = false;
 	}
 	else
 	{
 		digitalWrite(LED_BUILTIN, HIGH);
 		pixel->setPixelColor(0, pixel->Color(0, 0, 0));
-		 pixel->show();
+		pixel->show();
 		_isOn = true;
 	}
 }
 
-void BlinkerHandlerClass::neoBlue() {
-	color = pixel->Color(0,0,127);
+void BlinkerHandlerClass::neoBlue()
+{
+	color = pixel->Color(0, 0, 127);
 }
 
-void BlinkerHandlerClass::neoGreem() {
-	color = pixel->Color(0,127,0);
+void BlinkerHandlerClass::neoGreem()
+{
+	color = pixel->Color(0, 127, 0);
 }
 
-void BlinkerHandlerClass::neoRed() {
-	color = pixel->Color(127,0,0);
+void BlinkerHandlerClass::neoRed()
+{
+	color = pixel->Color(127, 0, 0);
 }
 
 BlinkerHandlerClass BlinkerHandler;

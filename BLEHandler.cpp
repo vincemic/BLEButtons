@@ -7,9 +7,8 @@ BLEHandlerClass::BLEHandlerClass()
 {
 }
 
-void BLEHandlerClass::begin(ReceivedMessageCallbback receivedMessageCallbback)
+void BLEHandlerClass::begin()
 {
-  this->receivedMessageCallbback = receivedMessageCallbback;
 
   int generalRemote = 384;
   // Create the BLE Device
@@ -37,6 +36,11 @@ void BLEHandlerClass::begin(ReceivedMessageCallbback receivedMessageCallbback)
   for (Setting &setting : DeviceHandler.settings)
   {
     registerDeviceCharacteristic(&setting);
+  }
+
+    for (Player &player : DeviceHandler.players)
+  {
+    registerDeviceCharacteristic(&player);
   }
 
   setConnected(false);
@@ -82,21 +86,6 @@ bool BLEHandlerClass::isConnected()
   return connected;
 }
 
-void BLEHandlerClass::receive(BLECharacteristic *pCharacteristic)
-{
-  BaseType_t woke;
-  std::string value = pCharacteristic->getValue();
-}
-
-void BLEHandlerClass::send(const char *message)
-{
-  if (connected)
-  {
-    // pTxCharacteristic->setValue(message);
-    // pTxCharacteristic->notify();
-    Log.traceln(F("[BLEHandler] Sent %s"), message);
-  }
-}
 
 void BLEHandlerClass::registerDeviceCharacteristic(Device *device)
 {

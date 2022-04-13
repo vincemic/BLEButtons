@@ -4,6 +4,7 @@
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include "SettingHandler.h"
+#include "SoundPlayer.h"
 
 #define DEFAULT_I2C_ADDR 0x3A
 typedef void (*ButtonChangeCallback)(uint8_t, bool);
@@ -135,9 +136,42 @@ public:
             pCharacteristic->setValue(value.c_str());
         }
     }
-
 };
 
+class Player : public Device
+{
+public:
+    Player(uint8_t index, const __FlashStringHelper *name, const __FlashStringHelper *bleIdentifier)
+    {
+        this->index = index;
+        this->name = (const char *)name;
+        this->bleIdentifier = (const char *)bleIdentifier;
+    }
+
+    uint32_t getProperties()
+    {
+        return BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY;
+    }
+
+    void onWrite(BLECharacteristic *pCharacteristic)
+    {
+        std::string value = pCharacteristic->getValue();
+        SoundPlayer.play(value.c_str());
+    }
+
+    void onRead(BLECharacteristic *pCharacteristic)
+    {
+        std::string value;
+        // SettingHandler.read(label, value);
+        pCharacteristic->setValue(value.c_str());
+    }
+
+    void notify(const char *filepath)
+    {
+        pCharacteristic->setValue(filepath);
+        pCharacteristic->notify();
+    }
+};
 class DeviceHandlerClass : public DeviceHandlerBase
 {
 
@@ -162,6 +196,7 @@ public:
     // Map led to their index, I/O Pin, and BLE id.
     Led leds[4] = {{0, F("Led 1"), 12, F("6E400006-B5A3-F393-E0A9-E50E24DCCA9E")}, {1, F("Led 2"), 13, F("6E400007-B5A3-F393-E0A9-E50E24DCCA9E")}, {2, F("Led 3"), 0, F("6E400008-B5A3-F393-E0A9-E50E24DCCA9E")}, {3, F("Led 4"), 1, F("6E400009-B5A3-F393-E0A9-E50E24DCCA9E")}};
     Setting settings[2] = {{0, F("WiFi SID"), WIFISID, true, F("6E410001-B5A3-F393-E0A9-E50E24DCCA9E")}, {1, F("WiFi Password"), WIFIPASSWORD, false, F("6E410002-B5A3-F393-E0A9-E50E24DCCA9E")}};
+    Player players[1] = {{0, F("Sound Player"),F("6E420001-B5A3-F393-E0A9-E50E24DCCA9E")}};
 };
 
 extern DeviceHandlerClass DeviceHandler;
