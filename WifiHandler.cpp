@@ -114,7 +114,7 @@ void WifiHandlerClass::getFile(const char *filepath)
         }
 
         https.end();
-        Log.errorln(F("[HTTPS] Saved file: %s"), filepath ));
+        Log.errorln(F("[HTTPS] Saved file: %s"), filepath );
     }
     else
     {
@@ -124,21 +124,11 @@ void WifiHandlerClass::getFile(const char *filepath)
 
 void WifiHandlerClass::setClock()
 {
-    configTime(4 * 60 * 60, 0, "pool.ntp.org");
-
-    Log.infoln(F("Waiting for NTP time sync: "));
-    time_t nowSecs = time(nullptr);
-    while (nowSecs < 8 * 3600 * 2)
-    {
-        delay(500);
-        yield();
-        nowSecs = time(nullptr);
-    }
-
     struct tm timeinfo;
-    gmtime_r(&nowSecs, &timeinfo);
-    Log.infoln(F("Current time: "));
-    Log.infoln(asctime(&timeinfo));
+    configTime(-4 * 60 * 60, 0, "pool.ntp.org");
+    Log.infoln(F("Waiting for NTP time sync: "));
+    getLocalTime(&timeinfo);
+    Log.infoln(F("Current time: %s"),asctime(&timeinfo));
 }
 
 WifiHandlerClass WifiHandler;
