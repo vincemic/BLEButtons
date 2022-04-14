@@ -15,6 +15,7 @@ private:
 
 
 public:
+    TaskHandle_t taskHandle;
     SettingHandlerClass();
     void being();
     void save();

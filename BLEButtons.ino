@@ -65,7 +65,7 @@ void setup()
   devicesTask.enable();
 
   // WiFi Task
-  wifiTask.set(TASK_MILLISECOND * 60000 * 5, TASK_FOREVER, &wifiTick);
+  wifiTask.set(TASK_MILLISECOND * 60000 * .5, TASK_FOREVER, &wifiTick);
   scheduler.addTask(wifiTask);
   wifiTask.enable();
 
@@ -128,6 +128,9 @@ void protocolReportCallback()
   SettingHandler.report(jsonDocument);
   WifiHandler.report(jsonDocument);
   BatteryHandler.report(jsonDocument);
+
+  jsonDocument[F("memory")][F("soundPlayerTaskHighWaterMark")] = uxTaskGetStackHighWaterMark(SoundPlayer.taskHandle);
+  jsonDocument[F("memory")][F("settingHandlerTaskHighWaterMark")] = uxTaskGetStackHighWaterMark(SettingHandler.taskHandle);
 
   jsonDocument[F("memory")][F("totaheap")] = ESP.getHeapSize();
   jsonDocument[F("memory")][F("freeheap")] = ESP.getFreeHeap();

@@ -9,7 +9,7 @@ public:
   SoundPlayerClass();
 
   volatile boolean dREQFlag = false;
-
+  TaskHandle_t taskHandle;
   boolean begin();
   volatile boolean playingMusic;
   void feedBuffer();

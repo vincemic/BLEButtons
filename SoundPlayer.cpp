@@ -30,11 +30,15 @@ boolean SoundPlayerClass::begin(void)
     return false;
   }
 
+  Log.errorln(F("[SoundPlayer] Found VS1053"));
+
   if (!SD.begin(CARDCS))
   {
     Log.errorln(F("[SoundPlayer] Couldn't initialize SD card"));
     return false;
   }
+
+  Log.errorln(F("[SoundPlayer] Found SD card"));
 
   int8_t irq = digitalPinToInterrupt(_dreq);
 
@@ -61,7 +65,7 @@ boolean SoundPlayerClass::begin(void)
       2048, // This stack size can be checked & adjusted by reading the Stack Highwater
       NULL, //
       2,    // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-      NULL,
+      &taskHandle,
       0);
 
   return true;

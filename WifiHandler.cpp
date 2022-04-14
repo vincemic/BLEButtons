@@ -22,7 +22,6 @@ void WifiHandlerClass::connect()
     Log.noticeln(F("[WifiHandler] Connecting to %s ...."), sid.c_str());
 
     status = WiFi.begin(sid.c_str(), password.c_str());
-
 }
 
 void WifiHandlerClass::disconnect()
@@ -44,6 +43,13 @@ void WifiHandlerClass::tick()
     {
     case WL_CONNECTED:
         Log.noticeln(F("[WifiHandler] Connected to WiFI (%s:%s)"), WiFi.getHostname(), WiFi.localIP().toString());
+
+        if (!didInit)
+        {
+            didInit = true;
+            setClock();
+            getFile("/hello001.mp3");
+        }
         break;
     case WL_CONNECT_FAILED:
         Log.noticeln(F("[WifiHandler] WiFi connection failed"));
@@ -77,7 +83,7 @@ void WifiHandlerClass::getFile(const char *filepath)
     path.concat(filepath);
 
     Log.traceln(F("[HTTPS] begin..."));
-    if (https.begin(wifiClient,path))
+    if (https.begin(wifiClient, path))
     {
         // HTTPS
         Log.traceln(F("[HTTPS] GET..."));
@@ -108,10 +114,31 @@ void WifiHandlerClass::getFile(const char *filepath)
         }
 
         https.end();
+        Log.errorln(F("[HTTPS] Saved file: %s"), filepath ));
     }
     else
     {
         Log.errorln(F("[HTTPS] Unable to create client"));
     }
 }
+
+void WifiHandlerClass::setClock()
+{
+    configTime(4 * 60 * 60, 0, "pool.ntp.org");
+
+    Log.infoln(F("Waiting for NTP time sync: "));
+    time_t nowSecs = time(nullptr);
+    while (nowSecs < 8 * 3600 * 2)
+    {
+        delay(500);
+        yield();
+        nowSecs = time(nullptr);
+    }
+
+    struct tm timeinfo;
+    gmtime_r(&nowSecs, &timeinfo);
+    Log.infoln(F("Current time: "));
+    Log.infoln(asctime(&timeinfo));
+}
+
 WifiHandlerClass WifiHandler;

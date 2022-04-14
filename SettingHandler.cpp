@@ -31,7 +31,7 @@ void SettingHandlerClass::being()
         4096,               // This stack size can be checked & adjusted by reading the Stack Highwater
         NULL,               //
         2,                  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-        NULL,
+        &taskHandle,
         0);
 }
 
@@ -91,7 +91,6 @@ void SettingHandlerClass::read(const char *name, std::string &value)
         value.append(docValue);
     }
 
-    Log.traceln(F("[SettingHandler] reading key: %s, value: %s into: %s"), name, docValue, value.c_str());
 }
 
 void SettingHandlerClass::write(const char *name, const char *value)

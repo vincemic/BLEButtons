@@ -11,6 +11,10 @@ public:
     void tick();
     void report(SpiRamJsonDocument &jsonDocument);
     void getFile(const char *filepath);
+
+private:
+    void setClock();
+    bool didInit = false;
 };
 
 extern WifiHandlerClass WifiHandler;
