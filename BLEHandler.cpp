@@ -49,22 +49,6 @@ void BLEHandlerClass::begin()
   pService->start();
 }
 
-void BLEHandlerClass::tick()
-{
-
-  if (connected)
-  {
-    /*
-    char message[100];
-    count++;
-    snprintf_P(message, sizeof(message), PSTR("This is an event: %d"), count);
-    pTxCharacteristic->setValue(message);
-    pTxCharacteristic->notify();
-    Log.traceln(F("[BLEHandler] Sent %s"), message);
-    */
-  }
-}
-
 void BLEHandlerClass::setConnected(bool connected)
 {
   this->connected = connected;

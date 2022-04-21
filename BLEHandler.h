@@ -18,7 +18,6 @@ class BLEHandlerClass
 public:
   BLEHandlerClass();
   void begin();
-  void tick();
   bool isConnected();
   const char *deviceName = "BLEButtons";
   volatile boolean _dREQFlag = false;

@@ -1,8 +1,6 @@
-#include <Adafruit_seesaw.h>
 #include <ArduinoLog.h>
-#include <SPI.h>
-#include <SD.h>
 #include <TaskScheduler.h>
+
 
 #include "DeviceHandler.h"
 #include "BlinkerHandler.h"
@@ -11,6 +9,7 @@
 #include "BatteryHandler.h"
 #include "SoundPlayer.h"
 #include "BLEHandler.h"
+#include "RTCHandler.h"
 
 // Scheduler
 Scheduler scheduler;
@@ -18,9 +17,8 @@ Task blinkTask;
 Task devicesTask;
 Task wifiTask;
 Task batteryTask;
-Task bleTask;
 
-// SoundPlayer soundPlayer(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ, CARDCS);
+bool isInitialized = false;
 
 void setup()
 {
@@ -29,12 +27,15 @@ void setup()
   Serial.begin(115200);
   Log.begin(LOG_LEVEL_VERBOSE, &Serial, false);
 
-  delay(10000);
+  delay(3000);
+
 
   BlinkerHandler.begin();
   SettingHandler.being();
   DeviceHandler.begin(&deviceButtonCallback);
   BLEHandler.begin();
+  RTCHandler.begin();
+
   Log.noticeln(F("The device %s started, now you can pair it with bluetooth!"), BLEHandler.deviceName);
 
   if (!SoundPlayer.begin())
@@ -46,7 +47,6 @@ void setup()
     SoundPlayer.setVolume(0, 0);
   }
 
-
   WifiHandler.connect();
 
   // Blink Task
@@ -54,18 +54,13 @@ void setup()
   scheduler.addTask(blinkTask);
   blinkTask.enable();
 
-  // BLE Task
-  bleTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &bleTick);
-  scheduler.addTask(bleTask);
-  bleTask.enable();
-
   // Devices Task
   devicesTask.set(TASK_MILLISECOND * 40, TASK_FOREVER, &devicesTick);
   scheduler.addTask(devicesTask);
   devicesTask.enable();
 
   // WiFi Task
-  wifiTask.set(TASK_MILLISECOND * 60000 * .5, TASK_FOREVER, &wifiTick);
+  wifiTask.set(TASK_MILLISECOND * 60000 * 2, TASK_FOREVER, &wifiTick);
   scheduler.addTask(wifiTask);
   wifiTask.enable();
 
@@ -102,10 +97,6 @@ void batteryTick()
   protocolReportCallback();
 }
 
-void bleTick()
-{
-  BLEHandler.tick();
-}
 
 void deviceButtonCallback(uint8_t index, bool isOn)
 {
@@ -132,15 +123,17 @@ void protocolReportCallback()
   jsonDocument[F("memory")][F("soundPlayerTaskHighWaterMark")] = uxTaskGetStackHighWaterMark(SoundPlayer.taskHandle);
   jsonDocument[F("memory")][F("settingHandlerTaskHighWaterMark")] = uxTaskGetStackHighWaterMark(SettingHandler.taskHandle);
 
-  jsonDocument[F("memory")][F("totaheap")] = ESP.getHeapSize();
-  jsonDocument[F("memory")][F("freeheap")] = ESP.getFreeHeap();
-  jsonDocument[F("memory")][F("totalpsram")] = ESP.getPsramSize();
-  jsonDocument[F("memory")][F("freepsram")] = ESP.getFreePsram();
-  jsonDocument[F("memory")][F("flashchipsize")] = ESP.getFlashChipSize();
+  jsonDocument[F("memory")][F("totaHeap")] = ESP.getHeapSize();
+  jsonDocument[F("memory")][F("freeHeap")] = ESP.getFreeHeap();
+  jsonDocument[F("memory")][F("totalPSRAM")] = ESP.getPsramSize();
+  jsonDocument[F("memory")][F("freePSRAM")] = ESP.getFreePsram();
+  jsonDocument[F("memory")][F("flashChipSize")] = ESP.getFlashChipSize();
 
   String json;
   serializeJson(jsonDocument, json);
   Log.traceln(F("Report:\r%s"), json.c_str());
+
+  InitializeFiles();
 }
 
 void batteryCallback()
@@ -151,8 +144,15 @@ void batteryCallback()
   Log.traceln(F("Current voltage: %f"), BatteryHandler.getVoltage());
 }
 
-void protocolPlayCallback(const char *filename)
+void InitializeFiles()
 {
-  Log.traceln(F("Play: %s"), filename);
-  // soundPlayer.play(filename);
+  if (WifiHandler.isConnected() && isInitialized == false)
+  {
+    isInitialized = true;
+    WifiHandler.createTTSFile("Getting the system ready, please wait", "starting");
+    yield();
+    WifiHandler.getTTSFile("/starting.mp3");
+    yield();
+    SoundPlayer.play("/starting.mp3");
+  }
 }

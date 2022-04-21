@@ -48,7 +48,6 @@ void WifiHandlerClass::tick()
         {
             didInit = true;
             setClock();
-            getFile("/hello001.mp3");
         }
         break;
     case WL_CONNECT_FAILED:
@@ -73,7 +72,48 @@ void WifiHandlerClass::report(SpiRamJsonDocument &jsonDocument)
     }
 }
 
-void WifiHandlerClass::getFile(const char *filepath)
+void WifiHandlerClass::createTTSFile(const char *text, const char *label)
+{
+    SpiRamJsonDocument jsonDocument(200);
+    WiFiClientSecure wifiClient;
+    wifiClient.setInsecure();
+    HTTPClient https;
+    String path = String(F("https://cq3odfu0dg.execute-api.us-east-1.amazonaws.com/Production/"));
+    String json;
+
+    jsonDocument["text"] = text;
+    jsonDocument["label"] = label;
+    serializeJson(jsonDocument, json);
+
+    Log.traceln(F("[HTTPS] begin..."));
+    if (https.begin(wifiClient, path))
+    {
+         https.setTimeout(45000);
+        // HTTPS
+        Log.traceln(F("[HTTPS] POST..."));
+        // start connection and send HTTP header
+        int httpCode = https.POST(json);
+
+        // httpCode will be negative on error
+        if (httpCode == HTTP_CODE_OK)
+        {
+            // HTTP header has been send and Server response header has been handled
+            Log.traceln(F("[HTTPS] POST... code: %d"), httpCode);
+        }
+        else
+        {
+            Log.errorln(F("[HTTPS] POST... failed, code: %s"), https.errorToString(httpCode).c_str());
+        }
+    }
+    else
+    {
+        Log.errorln(F("[HTTPS] Unable to create client"));
+    }
+
+    https.end();
+}
+
+void WifiHandlerClass::getTTSFile(const char *filepath)
 {
     WiFiClientSecure wifiClient;
     wifiClient.setInsecure();
@@ -85,6 +125,7 @@ void WifiHandlerClass::getFile(const char *filepath)
     Log.traceln(F("[HTTPS] begin..."));
     if (https.begin(wifiClient, path))
     {
+        https.setTimeout(45000);
         // HTTPS
         Log.traceln(F("[HTTPS] GET..."));
         // start connection and send HTTP header
@@ -113,13 +154,14 @@ void WifiHandlerClass::getFile(const char *filepath)
             Log.errorln(F("[HTTPS] GET... failed, error: %s"), https.errorToString(httpCode).c_str());
         }
 
-        https.end();
-        Log.errorln(F("[HTTPS] Saved file: %s"), filepath );
+        Log.errorln(F("[HTTPS] Saved file: %s"), filepath);
     }
     else
     {
         Log.errorln(F("[HTTPS] Unable to create client"));
     }
+
+    https.end();
 }
 
 void WifiHandlerClass::setClock()
@@ -128,7 +170,11 @@ void WifiHandlerClass::setClock()
     configTime(-4 * 60 * 60, 0, "pool.ntp.org");
     Log.infoln(F("Waiting for NTP time sync: "));
     getLocalTime(&timeinfo);
-    Log.infoln(F("Current time: %s"),asctime(&timeinfo));
+    Log.infoln(F("Current time: %s"), asctime(&timeinfo));
+}
+
+bool WifiHandlerClass::isConnected() {
+    return WiFi.status() == WL_CONNECTED;
 }
 
 WifiHandlerClass WifiHandler;

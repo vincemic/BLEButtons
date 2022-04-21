@@ -16,10 +16,10 @@ class BatteryHandlerClass
 {
 private:
   uint32_t batteryVoltage;
-  int vbusVoltage;
   int percentage;
   int min_level, max_level;
   int state, last_state;
+  bool hasVbusPower = false;
 
   void readData();
 

@@ -15,7 +15,7 @@ void BatteryHandlerClass::readData()
   adcAttachPin(VBAT_SENSE);
   analogSetPinAttenuation(VBAT_SENSE, ADC_11db); 
 
-  vbusVoltage = digitalRead(VBUS_SENSE);
+  hasVbusPower = digitalRead(VBUS_SENSE) > 0;
   batteryVoltage = analogReadMilliVolts(VBAT_SENSE);
   percentage = map(batteryVoltage, min_level, max_level, 0, 100);
 
@@ -145,7 +145,7 @@ void BatteryHandlerClass::report(SpiRamJsonDocument &jsonDocument)
 {
   readData();
   jsonDocument["battery"]["state"] = stateToString(state);
-  jsonDocument["battery"]["vbusVoltage"] = vbusVoltage;
+  jsonDocument["battery"]["vbusPower"] = hasVbusPower;
   jsonDocument["battery"]["batteryVoltage"] = batteryVoltage;
   jsonDocument["battery"]["percentage"] = percentage;
 }
