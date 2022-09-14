@@ -113,7 +113,7 @@ void WifiHandlerClass::createTTSFile(const char *text, const char *label)
     https.end();
 }
 
-void WifiHandlerClass::getTTSFile(const char *filepath)
+void WifiHandlerClass::getFile(const char *filepath)
 {
     WiFiClientSecure wifiClient;
     wifiClient.setInsecure();

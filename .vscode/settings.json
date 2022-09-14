@@ -11,5 +11,6 @@
         "random": "cpp",
         "initializer_list": "cpp",
         "unordered_set": "cpp"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Enabled"
 }

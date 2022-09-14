@@ -5,13 +5,14 @@
 #define _BV(x) (1 << (x))
 #endif
 
-
 // Mapping specifc to Unexpected Maker ESP32-S3 Feather
 #define VS1053_RESET -1 // VS1053 reset pin (not used!)
 #define VS1053_CS 38    // VS1053 chip select pin (output)
-#define VS1053_DCS 3   // VS1053 Data/command select pin (output)
+#define VS1053_DCS 3    // VS1053 Data/command select pin (output)
 #define CARDCS 33       // Card chip select pin
-#define VS1053_DREQ 1  // VS1053 Data request, ideally an Interrupt pin
+#define VS1053_DREQ 1   // VS1053 Data request, ideally an Interrupt pin
+#define VS1053_CONTROL_SPI_SETTING SPISettings(250000, MSBFIRST, SPI_MODE0)
+#define VS1053_DATA_SPI_SETTING SPISettings(8000000, MSBFIRST, SPI_MODE0)
 
 SoundPlayerClass::SoundPlayerClass()
     : Adafruit_VS1053(VS1053_RESET, VS1053_CS, VS1053_DCS, VS1053_DREQ)
@@ -170,7 +171,6 @@ boolean SoundPlayerClass::play(const char *trackfilepath)
 
   if (!currentTrack)
   {
-    Log.errorln(F("[SoundPlayer] Could not open SD file"), trackfilepath);
     return false;
   }
 
@@ -262,4 +262,89 @@ void SoundPlayerClass::printDirectory(File dir, int numTabs)
   }
 }
 
+FrequencyMapItem SoundPlayerClass::calculateSampleRateIndex(uint16_t frequency)
+{
+  FrequencyMapItem result = frequencyMap[0];
+
+  for (FrequencyMapItem &item : frequencyMap)
+  {
+    if (frequency > item.topFrequency)
+      break;
+    result = item;
+  }
+
+  return result;
+}
+uint8_t SoundPlayerClass::calculateSineSkipSpeed(uint16_t frequency, uint16_t sampleRate)
+{
+  uint8_t result = (frequency * 128) / sampleRate;
+
+  if (result > 31)
+    result = 31;
+
+  return result;
+}
+
+void SoundPlayerClass::playTone(uint16_t frequency, uint16_t milliseconds, uint8_t volumeLeft, uint8_t volumeRight )
+{
+  FrequencyMapItem sineSampleRateIndex = calculateSampleRateIndex(frequency);
+  // Its a bit weird but this is how to do this accroding to what a translated from the docs
+  uint8_t sineSkipSpeed = calculateSineSkipSpeed(frequency, sineSampleRateIndex.topFrequency);
+  uint8_t frequencyCommand = sineSampleRateIndex.sampleRateIndex << 5; // move the sampleRateIndex over 5 bits;
+  frequencyCommand = frequencyCommand | sineSkipSpeed;                 // add the sineSkipSpeed with logic <or>
+
+  Log.traceln(F("Frequency: %d frequencyCommand: %d sineSkipSpeed: %d sineSampleRateIndex: %d"), frequency, frequencyCommand, sineSkipSpeed, sineSampleRateIndex.topFrequency);
+
+  reset();
+
+  setVolume(volumeLeft,volumeRight);
+
+  uint16_t mode = sciRead(VS1053_REG_MODE);
+  mode |= 0x0020;
+  sciWrite(VS1053_REG_MODE, mode);
+
+  while (!digitalRead(_dreq))
+    ;
+    //  delay(10);
+
+#ifdef SPI_HAS_TRANSACTION
+  if (useHardwareSPI)
+    SPI.beginTransaction(VS1053_DATA_SPI_SETTING);
+#endif
+  digitalWrite(_dcs, LOW);
+  spiwrite(0x53);
+  spiwrite(0xEF);
+  spiwrite(0x6E);
+  spiwrite(frequencyCommand);
+  spiwrite(0x00);
+  spiwrite(0x00);
+  spiwrite(0x00);
+  spiwrite(0x00);
+  digitalWrite(_dcs, HIGH);
+#ifdef SPI_HAS_TRANSACTION
+  if (useHardwareSPI)
+    SPI.endTransaction();
+#endif
+
+  delay(milliseconds);
+
+#ifdef SPI_HAS_TRANSACTION
+  if (useHardwareSPI)
+    SPI.beginTransaction(VS1053_DATA_SPI_SETTING);
+#endif
+  digitalWrite(_dcs, LOW);
+  spiwrite(0x45);
+  spiwrite(0x78);
+  spiwrite(0x69);
+  spiwrite(0x74);
+  spiwrite(0x00);
+  spiwrite(0x00);
+  spiwrite(0x00);
+  spiwrite(0x00);
+  digitalWrite(_dcs, HIGH);
+#ifdef SPI_HAS_TRANSACTION
+  if (useHardwareSPI)
+    SPI.endTransaction();
+#endif
+}
 SoundPlayerClass SoundPlayer;

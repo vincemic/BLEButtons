@@ -6,8 +6,10 @@
 #include "SettingHandler.h"
 #include "SoundPlayer.h"
 
-#define DEFAULT_I2C_ADDR 0x3A
-typedef void (*ButtonChangeCallback)(uint8_t, bool);
+#define SEESAW1_I2C_ADDR 0x3A
+#define SEESAW2_I2C_ADDR 0x3B
+
+
 
 class DeviceHandlerBase
 {
@@ -172,17 +174,22 @@ public:
         pCharacteristic->notify();
     }
 };
+
+typedef void (*ButtonChangeCallback)(Button &btn, bool isOn);
+
 class DeviceHandlerClass : public DeviceHandlerBase
 {
 
 private:
-    Adafruit_seesaw seesaw;
+    Adafruit_seesaw seesaw1;
+    Adafruit_seesaw seesaw2;
     uint16_t pid;
     uint8_t year, mon, day;
-    bool seesawReady = false;
+    bool seesawsReady = false;
     ButtonChangeCallback buttonChangeCallback;
 
-    bool startSeesaw();
+    bool startSeesaws();
+    bool startSeesaw(Adafruit_seesaw &seesaw,uint8_t address);
 
 public:
     DeviceHandlerClass();
@@ -192,7 +199,7 @@ public:
     void turnOffLED(uint8_t index);
 
     // Map buttons to their index, I/O Pin, and BLE id.
-    Button buttons[4] = {{0, F("Button 1"), 18, F("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")}, {1, F("Button 2"), 19, F("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")}, {2, F("Button 3"), 20, F("6E400004-B5A3-F393-E0A9-E50E24DCCA9E")}, {3, F("Button 4"), 2, F("6E400005-B5A3-F393-E0A9-E50E24DCCA9E")}};
+    Button buttons[8] = {{0, F("Button 1"), 18, F("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")}, {1, F("Button 2"), 19, F("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")}, {2, F("Button 3"), 20, F("6E400004-B5A3-F393-E0A9-E50E24DCCA9E")}, {3, F("Button 4"), 2, F("6E400005-B5A3-F393-E0A9-E50E24DCCA9E")},{4, F("Switch 1"), 18, F("6E430002-B5A3-F393-E0A9-E50E24DCCA9E")}, {5, F("Switch 2"), 19, F("6E430003-B5A3-F393-E0A9-E50E24DCCA9E")}, {6, F("Switch 3"), 20, F("6E430004-B5A3-F393-E0A9-E50E24DCCA9E")}, {7, F("Switch 4"), 2, F("6E430005-B5A3-F393-E0A9-E50E24DCCA9E")}};
     // Map led to their index, I/O Pin, and BLE id.
     Led leds[4] = {{0, F("Led 1"), 12, F("6E400006-B5A3-F393-E0A9-E50E24DCCA9E")}, {1, F("Led 2"), 13, F("6E400007-B5A3-F393-E0A9-E50E24DCCA9E")}, {2, F("Led 3"), 0, F("6E400008-B5A3-F393-E0A9-E50E24DCCA9E")}, {3, F("Led 4"), 1, F("6E400009-B5A3-F393-E0A9-E50E24DCCA9E")}};
     Setting settings[2] = {{0, F("WiFi SID"), WIFISID, true, F("6E410001-B5A3-F393-E0A9-E50E24DCCA9E")}, {1, F("WiFi Password"), WIFIPASSWORD, false, F("6E410002-B5A3-F393-E0A9-E50E24DCCA9E")}};

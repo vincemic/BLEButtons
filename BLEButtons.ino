@@ -1,7 +1,6 @@
 #include <ArduinoLog.h>
 #include <TaskScheduler.h>
 
-
 #include "DeviceHandler.h"
 #include "BlinkerHandler.h"
 #include "SettingHandler.h"
@@ -29,7 +28,6 @@ void setup()
 
   delay(3000);
 
-
   BlinkerHandler.begin();
   SettingHandler.being();
   DeviceHandler.begin(&deviceButtonCallback);
@@ -45,6 +43,10 @@ void setup()
   else
   {
     SoundPlayer.setVolume(0, 0);
+    delay(1000);
+
+    if (!SoundPlayer.play("/starting.mp3"))
+      Log.errorln(F("Couldn't play starting.mp3"));
   }
 
   WifiHandler.connect();
@@ -73,12 +75,12 @@ void setup()
 void loop()
 {
   scheduler.execute();
-  delay(10);
 }
 
 void blinkTick()
 {
   BlinkerHandler.tick();
+  InitializeFiles();
 }
 
 void devicesTick()
@@ -97,17 +99,41 @@ void batteryTick()
   protocolReportCallback();
 }
 
-
-void deviceButtonCallback(uint8_t index, bool isOn)
+void deviceButtonCallback(Button &btn, bool isOn)
 {
-  Log.traceln(F("Got button callback for button %d"), index + 1);
-  if (isOn)
+  Log.traceln(F("Got button callback for %s"), btn.name);
+
+  if (btn.index < 4)
   {
-    DeviceHandler.turnOnLED(index);
+    if (isOn)
+    {
+      DeviceHandler.turnOnLED(btn.index);
+    }
+    else
+    {
+      DeviceHandler.turnOffLED(btn.index);
+    }
   }
   else
   {
-    DeviceHandler.turnOffLED(index);
+    if (btn.index == 4)
+    {
+      if (isOn)
+      {
+        SoundPlayer.play("/sw0001on.mp3");
+      }
+      else
+      {
+        SoundPlayer.play("/sw0001of.mp3");
+      }
+    }
+    if (btn.index == 7)
+    {
+      if (!isOn)
+      {
+        SoundPlayer.play("/subdives.mp3");
+      }
+    }
   }
 }
 
@@ -132,8 +158,6 @@ void protocolReportCallback()
   String json;
   serializeJson(jsonDocument, json);
   Log.traceln(F("Report:\r%s"), json.c_str());
-
-  InitializeFiles();
 }
 
 void batteryCallback()
@@ -146,13 +170,58 @@ void batteryCallback()
 
 void InitializeFiles()
 {
+  bool reset = false;
+
   if (WifiHandler.isConnected() && isInitialized == false)
   {
     isInitialized = true;
-    WifiHandler.createTTSFile("Getting the system ready, please wait", "starting");
-    yield();
-    WifiHandler.getTTSFile("/starting.mp3");
-    yield();
-    SoundPlayer.play("/starting.mp3");
+
+    if (reset || !SD.exists("/starting.mp3"))
+    {
+      WifiHandler.createTTSFile("Welcome Vincent, I am getting the system ready, please wait", "starting");
+      yield();
+      WifiHandler.getFile("/starting.mp3");
+      yield();
+    }
+
+    if (reset || !SD.exists("/systemup.mp3"))
+    {
+      WifiHandler.createTTSFile("Thank you for waiting, the command system is ready for you Sir", "systemup");
+      yield();
+      WifiHandler.getFile("/systemup.mp3");
+      yield();
+    }
+
+    if (reset || !SD.exists("/sw0001on.mp3"))
+    {
+      WifiHandler.createTTSFile("Switch one is on", "sw0001on");
+      yield();
+      WifiHandler.getFile("/sw0001on.mp3");
+      yield();
+    }
+
+    if (reset || !SD.exists("/sw0001of.mp3"))
+    {
+      WifiHandler.createTTSFile("Switch one is off", "sw0001of");
+      yield();
+      WifiHandler.getFile("/sw0001of.mp3");
+      yield();
+    }
+
+    if (reset || !SD.exists("/voxsdone.mp3"))
+    {
+      WifiHandler.createTTSFile("Done creating voice files", "voxsdone");
+      yield();
+      WifiHandler.getFile("/voxsdone.mp3");
+      yield();
+    }
+
+    if (reset || !SD.exists("/subdives.mp3"))
+    {
+      WifiHandler.getFile("/subdives.mp3");
+      yield();
+    }
+
+    SoundPlayer.play("/systemup.mp3");
   }
 }
