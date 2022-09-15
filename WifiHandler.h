@@ -1,4 +1,6 @@
 #pragma once
+#define HOSTNAME "webtach" // <HOSTNAME>.local *should* work for mDNS browsing
+
 #include <ArduinoJson.h>
 #include "JsonHelper.h"
 class WifiHandlerClass
@@ -6,7 +8,7 @@ class WifiHandlerClass
 
 public:
     WifiHandlerClass();
-    void connect();
+    bool connect();
     void disconnect();
     void tick();
     void report(SpiRamJsonDocument &jsonDocument);

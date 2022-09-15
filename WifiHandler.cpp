@@ -10,8 +10,9 @@ WifiHandlerClass::WifiHandlerClass()
 {
 }
 
-void WifiHandlerClass::connect()
+bool WifiHandlerClass::connect()
 {
+     unsigned long startMillis = millis();
     std::string sid;
     std::string password;
     wl_status_t status = WL_NO_SHIELD;
@@ -22,6 +23,20 @@ void WifiHandlerClass::connect()
     Log.noticeln(F("[WifiHandler] Connecting to %s ...."), sid.c_str());
 
     status = WiFi.begin(sid.c_str(), password.c_str());
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        if (millis() - startMillis > 30000)
+        {
+            return false;
+        }
+    }
+
+    Log.noticeln(F("[WifiHandler] Connected to WiFI (%s:%s)"), WiFi.getHostname(), WiFi.localIP().toString());
+    WiFi.setHostname(HOSTNAME);
+    
+    return true;
 }
 
 void WifiHandlerClass::disconnect()
@@ -88,7 +103,7 @@ void WifiHandlerClass::createTTSFile(const char *text, const char *label)
     Log.traceln(F("[HTTPS] begin..."));
     if (https.begin(wifiClient, path))
     {
-         https.setTimeout(45000);
+        https.setTimeout(45000);
         // HTTPS
         Log.traceln(F("[HTTPS] POST..."));
         // start connection and send HTTP header
@@ -173,7 +188,8 @@ void WifiHandlerClass::setClock()
     Log.infoln(F("Current time: %s"), asctime(&timeinfo));
 }
 
-bool WifiHandlerClass::isConnected() {
+bool WifiHandlerClass::isConnected()
+{
     return WiFi.status() == WL_CONNECTED;
 }
 

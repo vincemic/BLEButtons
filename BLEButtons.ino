@@ -1,3 +1,25 @@
+
+
+#define TCP_PORT 80   // TCP port for ESPAsyncWebServer (80)
+#define OLED_I2C 0x3C // display I2C address
+#define TACH1_PIN 17
+#define TACH2_PIN 18
+#define DEFAULT_POLES 4
+
+#include <AsyncTCP.h>
+
+#include <AsyncEventSource.h>
+#include <AsyncJson.h>
+#include <AsyncWebSocket.h>
+#include <AsyncWebSynchronization.h>
+#include <ESPAsyncWebServer.h>
+#include <SPIFFSEditor.h>
+#include <StringArray.h>
+#include <WebAuthentication.h>
+#include <WebHandlerImpl.h>
+#include <WebResponseImpl.h>
+#include <ESPmDNS.h>
+
 #include <ArduinoLog.h>
 #include <TaskScheduler.h>
 
@@ -9,6 +31,10 @@
 #include "SoundPlayer.h"
 #include "BLEHandler.h"
 #include "RTCHandler.h"
+#include "Tach.h"
+#include "WebServer.h"
+
+WebServer webServer(TCP_PORT);
 
 // Scheduler
 Scheduler scheduler;
@@ -16,6 +42,8 @@ Task blinkTask;
 Task devicesTask;
 Task wifiTask;
 Task batteryTask;
+
+TaskHandle_t taskHandle;
 
 bool isInitialized = false;
 
@@ -47,9 +75,39 @@ void setup()
 
     if (!SoundPlayer.play("/starting.mp3"))
       Log.errorln(F("Couldn't play starting.mp3"));
+
+    delay(5000);
   }
 
-  WifiHandler.connect();
+  if (WifiHandler.connect())
+  {
+    Log.noticeln(F("Starting mDNS service"));
+
+    if (!MDNS.begin(HOSTNAME))
+    {
+      Log.errorln(F("mDNS Failed\n"));
+    }
+
+    SoundPlayer.play("/wificonnected.mp3");
+    delay(5000);
+
+    webServer.begin();
+  }
+
+  delay(5000);
+  Log.noticeln(F("Configuring Web Tachometer"));
+
+  leftTach.pin = TACH1_PIN;
+  rightTach.pin = TACH2_PIN;
+  leftTach.num_poles = DEFAULT_POLES;
+  rightTach.num_poles = DEFAULT_POLES;
+
+  pinMode(leftTach.pin, INPUT_PULLUP);
+  attachInterrupt(leftTach.pin, leftTachTrigger, FALLING);
+  pinMode(rightTach.pin, INPUT_PULLUP);
+  attachInterrupt(rightTach.pin, rightTachTrigger, FALLING);
+
+  Log.noticeln(F("Adding tasks"));
 
   // Blink Task
   blinkTask.set(TASK_MILLISECOND * 1000, TASK_FOREVER, &blinkTick);
@@ -170,58 +228,68 @@ void batteryCallback()
 
 void InitializeFiles()
 {
-  bool reset = false;
+  bool reset = true; // if there are changes to the voice files change this flag to true for one run.
 
   if (WifiHandler.isConnected() && isInitialized == false)
   {
     isInitialized = true;
 
-    if (reset || !SD.exists("/starting.mp3"))
+    if (reset)
     {
-      WifiHandler.createTTSFile("Welcome Vincent, I am getting the system ready, please wait", "starting");
-      yield();
-      WifiHandler.getFile("/starting.mp3");
-      yield();
-    }
+      if (!SD.exists("/starting.mp3"))
+      {
+        WifiHandler.createTTSFile("Welcome Vincent, I am getting the system ready, please wait", "starting");
+        yield();
+        WifiHandler.getFile("/starting.mp3");
+        yield();
+      }
 
-    if (reset || !SD.exists("/systemup.mp3"))
-    {
-      WifiHandler.createTTSFile("Thank you for waiting, the command system is ready for you Sir", "systemup");
-      yield();
-      WifiHandler.getFile("/systemup.mp3");
-      yield();
-    }
+      if (!SD.exists("/systemup.mp3"))
+      {
+        WifiHandler.createTTSFile("Thank you for waiting, the command system is ready for you Sir", "systemup");
+        yield();
+        WifiHandler.getFile("/systemup.mp3");
+        yield();
+      }
 
-    if (reset || !SD.exists("/sw0001on.mp3"))
-    {
-      WifiHandler.createTTSFile("Switch one is on", "sw0001on");
-      yield();
-      WifiHandler.getFile("/sw0001on.mp3");
-      yield();
-    }
+      if (!SD.exists("/sw0001on.mp3"))
+      {
+        WifiHandler.createTTSFile("Switch one is on", "sw0001on");
+        yield();
+        WifiHandler.getFile("/sw0001on.mp3");
+        yield();
+      }
 
-    if (reset || !SD.exists("/sw0001of.mp3"))
-    {
-      WifiHandler.createTTSFile("Switch one is off", "sw0001of");
-      yield();
-      WifiHandler.getFile("/sw0001of.mp3");
-      yield();
-    }
+      if (!SD.exists("/sw0001of.mp3"))
+      {
+        WifiHandler.createTTSFile("Switch one is off", "sw0001of");
+        yield();
+        WifiHandler.getFile("/sw0001of.mp3");
+        yield();
+      }
 
-    if (reset || !SD.exists("/voxsdone.mp3"))
-    {
-      WifiHandler.createTTSFile("Done creating voice files", "voxsdone");
-      yield();
-      WifiHandler.getFile("/voxsdone.mp3");
-      yield();
-    }
+      if (!SD.exists("/voxsdone.mp3"))
+      {
+        WifiHandler.createTTSFile("Done creating voice files", "voxsdone");
+        yield();
+        WifiHandler.getFile("/voxsdone.mp3");
+        yield();
+      }
 
-    if (reset || !SD.exists("/subdives.mp3"))
-    {
-      WifiHandler.getFile("/subdives.mp3");
-      yield();
-    }
+      if (!SD.exists("/subdives.mp3"))
+      {
+        WifiHandler.getFile("/subdives.mp3");
+        yield();
+      }
 
+      if (!SD.exists("/wificonnected.mp3"))
+      {
+        WifiHandler.createTTSFile("Connected to WIFI", "wificonnected");
+        yield();
+        WifiHandler.getFile("/wificonnected.mp3");
+        yield();
+      }
+    }
     SoundPlayer.play("/systemup.mp3");
   }
 }
