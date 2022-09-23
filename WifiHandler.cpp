@@ -12,7 +12,7 @@ WifiHandlerClass::WifiHandlerClass()
 
 bool WifiHandlerClass::connect()
 {
-     unsigned long startMillis = millis();
+    unsigned long startMillis = millis();
     std::string sid;
     std::string password;
     wl_status_t status = WL_NO_SHIELD;
@@ -22,11 +22,16 @@ bool WifiHandlerClass::connect()
 
     Log.noticeln(F("[WifiHandler] Connecting to %s ...."), sid.c_str());
 
-    status = WiFi.begin(sid.c_str(), password.c_str());
+    WiFi.mode(WIFI_STA);
+    WiFi.enableLongRange(true);
+    WiFi.setHostname(HOSTNAME);
+    WiFi.setSleep(false);
+
+    WiFi.begin(sid.c_str(), password.c_str());
 
     while (WiFi.status() != WL_CONNECTED)
     {
-        delay(500);
+        delay(1000);
         if (millis() - startMillis > 30000)
         {
             return false;
@@ -34,8 +39,7 @@ bool WifiHandlerClass::connect()
     }
 
     Log.noticeln(F("[WifiHandler] Connected to WiFI (%s:%s)"), WiFi.getHostname(), WiFi.localIP().toString());
-    WiFi.setHostname(HOSTNAME);
-    
+
     return true;
 }
 
@@ -44,7 +48,7 @@ void WifiHandlerClass::disconnect()
 
     if (WiFi.status() == WL_CONNECTED)
     {
-        WiFi.disconnect();
+        WiFi.disconnect(true,true);
 
         Log.noticeln(F("[WifiHandler] WiFi disconnected"));
     }
