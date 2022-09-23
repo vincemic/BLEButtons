@@ -1,0 +1,1 @@
+This is an application I created to test ESP32 features and harware accessories. It specifically designed for a project box I put together. 
