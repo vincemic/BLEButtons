@@ -90,7 +90,10 @@ void SettingHandlerClass::read(const char *name, std::string &value)
     {
         value.append(docValue);
     }
-
+    else
+    {
+        value.append("");
+    }
 }
 
 void SettingHandlerClass::write(const char *name, const char *value)

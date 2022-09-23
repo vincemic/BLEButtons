@@ -1,7 +1,0 @@
-{
-    "configuration": "LoopCore=1,EventsCore=1,USBMode=default,CDCOnBoot=cdc,MSCOnBoot=default,DFUOnBoot=default,UploadMode=cdc,PSRAM=enabled,PartitionScheme=default_16MB,CPUFreq=240,FlashMode=qio,UploadSpeed=115200,DebugLevel=error",
-    "board": "esp32:esp32:feathers3",
-    "sketch": "BLEButtons.ino",
-    "port": "COM19",
-    "output": "../build1"
-}

@@ -19,6 +19,7 @@ SoundPlayerClass::SoundPlayerClass()
 {
   playingMusic = false;
   cardCS = CARDCS;
+  hardwareSPI = false;
 }
 
 boolean SoundPlayerClass::begin(void)
@@ -171,7 +172,12 @@ boolean SoundPlayerClass::play(const char *trackfilepath)
 
   if (!currentTrack)
   {
+    Log.errorln(F("Did not find file: %s"), trackfilepath);
     return false;
+  }
+  else
+  {
+    Log.errorln(F("Playing file: %s"), trackfilepath);
   }
 
   // We know we have a valid file. Check if .mp3
@@ -285,7 +291,7 @@ uint8_t SoundPlayerClass::calculateSineSkipSpeed(uint16_t frequency, uint16_t sa
   return result;
 }
 
-void SoundPlayerClass::playTone(uint16_t frequency, uint16_t milliseconds, uint8_t volumeLeft, uint8_t volumeRight )
+void SoundPlayerClass::playTone(uint16_t frequency, uint16_t milliseconds, uint8_t volumeLeft, uint8_t volumeRight)
 {
   FrequencyMapItem sineSampleRateIndex = calculateSampleRateIndex(frequency);
   // Its a bit weird but this is how to do this accroding to what a translated from the docs
@@ -297,7 +303,7 @@ void SoundPlayerClass::playTone(uint16_t frequency, uint16_t milliseconds, uint8
 
   reset();
 
-  setVolume(volumeLeft,volumeRight);
+  setVolume(volumeLeft, volumeRight);
 
   uint16_t mode = sciRead(VS1053_REG_MODE);
   mode |= 0x0020;
@@ -308,10 +314,10 @@ void SoundPlayerClass::playTone(uint16_t frequency, uint16_t milliseconds, uint8
     //  delay(10);
 
 #ifdef SPI_HAS_TRANSACTION
-  if (useHardwareSPI)
+  if (hardwareSPI)
     SPI.beginTransaction(VS1053_DATA_SPI_SETTING);
 #endif
-  digitalWrite(_dcs, LOW);
+  digitalWrite(dcs, LOW);
   spiwrite(0x53);
   spiwrite(0xEF);
   spiwrite(0x6E);
@@ -320,19 +326,19 @@ void SoundPlayerClass::playTone(uint16_t frequency, uint16_t milliseconds, uint8
   spiwrite(0x00);
   spiwrite(0x00);
   spiwrite(0x00);
-  digitalWrite(_dcs, HIGH);
+  digitalWrite(dcs, HIGH);
 #ifdef SPI_HAS_TRANSACTION
-  if (useHardwareSPI)
+  if (hardwareSPI)
     SPI.endTransaction();
 #endif
 
   delay(milliseconds);
 
 #ifdef SPI_HAS_TRANSACTION
-  if (useHardwareSPI)
+  if (hardwareSPI)
     SPI.beginTransaction(VS1053_DATA_SPI_SETTING);
 #endif
-  digitalWrite(_dcs, LOW);
+  digitalWrite(dcs, LOW);
   spiwrite(0x45);
   spiwrite(0x78);
   spiwrite(0x69);
@@ -341,9 +347,9 @@ void SoundPlayerClass::playTone(uint16_t frequency, uint16_t milliseconds, uint8
   spiwrite(0x00);
   spiwrite(0x00);
   spiwrite(0x00);
-  digitalWrite(_dcs, HIGH);
+  digitalWrite(dcs, HIGH);
 #ifdef SPI_HAS_TRANSACTION
-  if (useHardwareSPI)
+  if (hardwareSPI)
     SPI.endTransaction();
 #endif
 }
