@@ -20,25 +20,31 @@ bool WifiHandlerClass::connect()
     SettingHandler.readWiFiSID(sid);
     SettingHandler.readWiFiPassword(password);
 
-    Log.noticeln(F("[WifiHandler] Connecting to %s ...."), sid.c_str());
+    Log.notice(F("[WifiHandler] Connecting to %s ...."), sid.c_str());
 
     WiFi.mode(WIFI_STA);
-    WiFi.enableLongRange(true);
     WiFi.setHostname(HOSTNAME);
-    WiFi.setSleep(false);
+    //   WiFi.enableLongRange(true);
+    //   WiFi.setSleep(false);
+
+    Log.notice(F("."));
 
     WiFi.begin(sid.c_str(), password.c_str());
+    Log.noticeln(F("."));
 
     while (WiFi.status() != WL_CONNECTED)
     {
+        Log.notice(F("."));
         delay(1000);
+
         if (millis() - startMillis > 30000)
         {
+            Log.noticeln(F("\n[WifiHandler] Failed to connect to WiFI"));
             return false;
         }
     }
 
-    Log.noticeln(F("[WifiHandler] Connected to WiFI (%s:%s)"), WiFi.getHostname(), WiFi.localIP().toString());
+    Log.noticeln(F("\n[WifiHandler] Connected to WiFI (%s:%s)"), WiFi.getHostname(), WiFi.localIP().toString());
 
     return true;
 }
@@ -48,7 +54,7 @@ void WifiHandlerClass::disconnect()
 
     if (WiFi.status() == WL_CONNECTED)
     {
-        WiFi.disconnect(true,true);
+        WiFi.disconnect(true, true);
 
         Log.noticeln(F("[WifiHandler] WiFi disconnected"));
     }

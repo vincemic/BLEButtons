@@ -1,25 +1,10 @@
 #define TCP_PORT 80   // TCP port for ESPAsyncWebServer (80)
 #define OLED_I2C 0x3C // display I2C address
-#define TACH1_PIN 17
-#define TACH2_PIN 18
-#define DEFAULT_POLES 4
 
-#include <Arduino.h>
-#include "main.h"
-#include <AsyncTCP.h>
-#include <AsyncEventSource.h>
-#include <AsyncJson.h>
-#include <AsyncWebSocket.h>
-#include <AsyncWebSynchronization.h>
-#include <ESPAsyncWebServer.h>
-#include <SPIFFSEditor.h>
-#include <StringArray.h>
-#include <WebAuthentication.h>
-#include <WebHandlerImpl.h>
-#include <WebResponseImpl.h>
 #include <ESPmDNS.h>
-
+#include <Arduino.h>
 #include <ArduinoLog.h>
+#include "main.h"
 
 #include "DeviceHandler.h"
 #include "BlinkerHandler.h"
@@ -30,9 +15,9 @@
 #include "BLEHandler.h"
 #include "RTCHandler.h"
 #include "Tach.h"
-#include "WebServer.h"
+#include "ButtonsWebServer.h"
 
-WebServer webServer(TCP_PORT);
+ButtonsWebServer buttonsWebServer(TCP_PORT);
 
 // Scheduler
 Scheduler scheduler;
@@ -47,8 +32,6 @@ void setup()
   // Start serial logging
   Serial.begin(115200);
   Log.begin(LOG_LEVEL_VERBOSE, &Serial, false);
-
-  delay(15000);
 
   BlinkerHandler.begin();
   SettingHandler.being();
@@ -81,10 +64,9 @@ void setup()
       Log.errorln(F("RESET %d."), wifiAttempts);
       WifiHandler.disconnect();
     }
-    else 
+    else
     {
       Log.errorln(F("FAILED\n\nRebooting!"));
-      delay(10000);
       ESP.restart();
     }
   }
@@ -99,20 +81,7 @@ void setup()
   SoundPlayer.play("/wificonnected.mp3");
   delay(5000);
 
-  webServer.begin();
-
-  delay(5000);
-  Log.noticeln(F("Configuring Web Tachometer"));
-
-  leftTach.pin = TACH1_PIN;
-  rightTach.pin = TACH2_PIN;
-  leftTach.num_poles = DEFAULT_POLES;
-  rightTach.num_poles = DEFAULT_POLES;
-
-  pinMode(leftTach.pin, INPUT_PULLUP);
-  attachInterrupt(leftTach.pin, leftTachTrigger, FALLING);
-  pinMode(rightTach.pin, INPUT_PULLUP);
-  attachInterrupt(rightTach.pin, rightTachTrigger, FALLING);
+  buttonsWebServer.begin();
 
   Log.noticeln(F("Adding tasks"));
 
@@ -294,6 +263,18 @@ void InitializeFiles()
         WifiHandler.createTTSFile("Connected to WIFI", "wificonnected");
         yield();
         WifiHandler.getFile("/wificonnected.mp3");
+        yield();
+      }
+
+      if (!SD.exists("/index.html"))
+      {
+        WifiHandler.getFile("/index.html");
+        yield();
+      }
+
+      if (!SD.exists("/favicon.svg"))
+      {
+        WifiHandler.getFile("/favicon.svg");
         yield();
       }
     }
